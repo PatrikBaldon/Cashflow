@@ -21,7 +21,7 @@ const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) =>
   const { hasHiddenAccess, user } = useAuthStore()
   const [showNewForm, setShowNewForm] = useState(false)
   const [editingCash, setEditingCash] = useState<any>(null)
-  const [deletingCash] = useState<any>(null)
+  // const [deletingCash] = useState<any>(null)
 
   const {
     register,

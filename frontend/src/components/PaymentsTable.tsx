@@ -28,7 +28,9 @@ const PaymentsTable: React.FC<PaymentsTableProps> = ({ onEditPayment }) => {
   if (payments.length === 0) {
     return (
       <div className="p-8 text-center">
-        <Eye className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <div className="h-12 w-12 text-gray-300 mx-auto mb-4 flex items-center justify-center">
+          <div className="w-8 h-8 bg-gray-300 rounded"></div>
+        </div>
         <p className="text-gray-500">Nessun pagamento trovato</p>
         <p className="text-sm text-gray-400 mt-1">
           Aggiungi il primo pagamento per iniziare

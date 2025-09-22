@@ -6,6 +6,7 @@ interface CashRegister {
   name: string
   is_hidden: boolean
   description?: string
+  hidden_password?: string
   created_at: string
 }
 

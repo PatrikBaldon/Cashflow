@@ -13,7 +13,7 @@ import SettingsModal from './SettingsModal'
 import ExcelExportModal from './ExcelExportModal'
 
 const MainScreen: React.FC = () => {
-  const { user, logout, hasHiddenAccess, lockHiddenCash } = useAuthStore()
+  const { user, logout, hasHiddenAccess } = useAuthStore()
   const { selectedCashRegister, loadCashRegisters } = useCashStore()
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showCashManagement, setShowCashManagement] = useState(false)
