@@ -26,9 +26,9 @@ describe('LoginScreen', () => {
     render(<LoginScreen />);
     
     expect(screen.getByText('Registro Contanti')).toBeInTheDocument();
-    expect(screen.getByText('Accedi al sistema')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Nome utente')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
+    expect(screen.getByText('Future Dance School')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Inserisci il tuo nome')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Inserisci la password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Accedi' })).toBeInTheDocument();
   });
 
@@ -39,7 +39,7 @@ describe('LoginScreen', () => {
     fireEvent.click(loginButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Nome utente richiesto')).toBeInTheDocument();
+      expect(screen.getByText('Nome operatore richiesto')).toBeInTheDocument();
       expect(screen.getByText('Password richiesta')).toBeInTheDocument();
     });
   });
@@ -52,8 +52,8 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen />);
     
-    const usernameInput = screen.getByPlaceholderText('Nome utente');
-    const passwordInput = screen.getByPlaceholderText('Password');
+    const usernameInput = screen.getByPlaceholderText('Inserisci il tuo nome');
+    const passwordInput = screen.getByPlaceholderText('Inserisci la password');
     const loginButton = screen.getByRole('button', { name: 'Accedi' });
     
     fireEvent.change(usernameInput, { target: { value: 'testuser' } });
@@ -76,8 +76,8 @@ describe('LoginScreen', () => {
 
     render(<LoginScreen />);
     
-    const usernameInput = screen.getByPlaceholderText('Nome utente');
-    const passwordInput = screen.getByPlaceholderText('Password');
+    const usernameInput = screen.getByPlaceholderText('Inserisci il tuo nome');
+    const passwordInput = screen.getByPlaceholderText('Inserisci la password');
     const loginButton = screen.getByRole('button', { name: 'Accedi' });
     
     fireEvent.change(usernameInput, { target: { value: 'testuser' } });
