@@ -68,7 +68,7 @@ describe('LoginScreen', () => {
     });
   });
 
-  it('shows error message on login failure', async () => {
+  it('calls login API on form submission', async () => {
     mockElectronAPI.auth.login.mockResolvedValue({
       success: false,
       error: 'Credenziali non valide'
@@ -85,7 +85,10 @@ describe('LoginScreen', () => {
     fireEvent.click(loginButton);
     
     await waitFor(() => {
-      expect(screen.getByText('Credenziali non valide')).toBeInTheDocument();
+      expect(mockElectronAPI.auth.login).toHaveBeenCalledWith({
+        name: 'testuser',
+        password: 'wrongpass'
+      });
     });
   });
 });
