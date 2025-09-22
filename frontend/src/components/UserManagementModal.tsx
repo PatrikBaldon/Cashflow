@@ -52,7 +52,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ onClose }) =>
     try {
       const result = await window.electronAPI.users.get()
       if (result.success) {
-        setUsers(result.data)
+        setUsers(result.data || [])
       }
     } catch (error) {
       console.error('Errore caricamento utenti:', error)

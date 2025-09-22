@@ -28,7 +28,7 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ onClose }) => {
       })
 
       if (result.success) {
-        toast.success(`File Excel salvato: ${result.fileName}`)
+        toast.success(`File Excel salvato: ${result.filePath}`)
         onClose()
       } else {
         toast.error(result.message || 'Errore durante l\'export')
@@ -49,7 +49,7 @@ const ExcelExportModal: React.FC<ExcelExportModalProps> = ({ onClose }) => {
       })
 
       if (result.success) {
-        toast.success(`File Excel salvato: ${result.fileName}`)
+        toast.success(`File Excel salvato: ${result.filePath}`)
         onClose()
       } else {
         toast.error(result.message || 'Errore durante l\'export')

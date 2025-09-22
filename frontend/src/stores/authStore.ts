@@ -82,7 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         toast.success('Accesso alle casse nascoste sbloccato')
         return true
       } else {
-        toast.error(result.message || 'Password non valida')
+        toast.error('Password non valida')
         return false
       }
     } catch (error) {
@@ -106,7 +106,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   checkHiddenAccess: async () => {
     try {
       const result = await window.electronAPI.auth.checkHiddenAccess()
-      set({ hasHiddenAccess: result.hasAccess })
+      set({ hasHiddenAccess: result })
     } catch (error) {
       console.error('Errore verifica accesso casse nascoste:', error)
     }

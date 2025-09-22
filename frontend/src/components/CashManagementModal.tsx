@@ -18,7 +18,7 @@ interface CashManagementModalProps {
 
 const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) => {
   const { cashRegisters, createCashRegister, loadCashRegisters } = useCashStore()
-  const { hasHiddenAccess, user } = useAuthStore()
+  const { hasHiddenAccess } = useAuthStore()
   const [showNewForm, setShowNewForm] = useState(false)
   const [editingCash, setEditingCash] = useState<any>(null)
   // const [deletingCash] = useState<any>(null)
@@ -70,8 +70,7 @@ const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) =>
           name: data.name,
           description: data.description,
           is_hidden: data.is_hidden,
-          hidden_password: data.is_hidden ? data.hidden_password : null,
-          createdBy: user?.id || 1
+          hidden_password: data.is_hidden ? data.hidden_password : undefined
         })
         setShowNewForm(false)
         reset()
