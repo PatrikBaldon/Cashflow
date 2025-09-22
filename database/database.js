@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -13,35 +13,28 @@ class DatabaseManager {
 
   // Inizializza il database
   async initialize() {
-    return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
-        if (err) {
-          console.error('Errore apertura database:', err);
-          reject(err);
-        } else {
-          console.log('Database connesso con successo');
-          this.createTables().then(resolve).catch(reject);
-        }
-      });
-    });
+    try {
+      this.db = new Database(this.dbPath);
+      console.log('Database connesso con successo');
+      await this.createTables();
+    } catch (err) {
+      console.error('Errore apertura database:', err);
+      throw err;
+    }
   }
 
   // Crea le tabelle se non esistono
   async createTables() {
-    return new Promise((resolve, reject) => {
+    try {
       const schemaPath = path.join(__dirname, 'schema.sql');
       const schema = fs.readFileSync(schemaPath, 'utf8');
       
-      this.db.exec(schema, (err) => {
-        if (err) {
-          console.error('Errore creazione tabelle:', err);
-          reject(err);
-        } else {
-          console.log('Tabelle create/verificate con successo');
-          resolve();
-        }
-      });
-    });
+      this.db.exec(schema);
+      console.log('Tabelle create/verificate con successo');
+    } catch (err) {
+      console.error('Errore creazione tabelle:', err);
+      throw err;
+    }
   }
 
   // Gestisce la chiave di crittografia
@@ -56,399 +49,319 @@ class DatabaseManager {
     }
   }
 
-  // Cripta dati sensibili
+  // Cripta i dati
   encrypt(text) {
     return CryptoJS.AES.encrypt(text, this.encryptionKey).toString();
   }
 
-  // Decripta dati sensibili
-  decrypt(encryptedText) {
-    const bytes = CryptoJS.AES.decrypt(encryptedText, this.encryptionKey);
+  // Decripta i dati
+  decrypt(ciphertext) {
+    const bytes = CryptoJS.AES.decrypt(ciphertext, this.encryptionKey);
     return bytes.toString(CryptoJS.enc.Utf8);
   }
 
-  // OPERATORI
-  async createOperator(name, password, isAdmin = false) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    return new Promise((resolve, reject) => {
-      const sql = `INSERT INTO operators (name, password_hash, is_admin) VALUES (?, ?, ?)`;
-      this.db.run(sql, [name, passwordHash, isAdmin], function(err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID, name, isAdmin });
-      });
-    });
+  // Crea un nuovo utente
+  async createUser(username, password, role = 'user') {
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const stmt = this.db.prepare(`
+        INSERT INTO users (username, password, role, created_at)
+        VALUES (?, ?, ?, datetime('now'))
+      `);
+      
+      const result = stmt.run(username, hashedPassword, role);
+      return { success: true, userId: result.lastInsertRowid };
+    } catch (err) {
+      console.error('Errore creazione utente:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async getOperatorById(id) {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT id, name, is_admin, created_at, last_login FROM operators WHERE id = ?`;
-      this.db.get(sql, [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-  }
-
-  async updateOperator(id, updates) {
-    const fields = [];
-    const values = [];
-
-    Object.keys(updates).forEach(key => {
-      if (updates[key] !== undefined && key !== 'id') {
-        if (key === 'password') {
-          // Hash della password se fornita
-          bcrypt.hash(updates[key], 10).then(hash => {
-            fields.push('password_hash = ?');
-            values.push(hash);
-          });
-        } else {
-          fields.push(`${key} = ?`);
-          values.push(updates[key]);
-        }
+  // Verifica le credenziali utente
+  async verifyUser(username, password) {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM users WHERE username = ?');
+      const user = stmt.get(username);
+      
+      if (!user) {
+        return { success: false, error: 'Utente non trovato' };
       }
-    });
 
-    if (fields.length === 0) return { success: false, message: 'Nessun campo da aggiornare' };
-
-    values.push(id);
-    const sql = `UPDATE operators SET ${fields.join(', ')} WHERE id = ?`;
-
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, values, function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
-      });
-    });
-  }
-
-  async deleteOperator(id) {
-    return new Promise((resolve, reject) => {
-      const sql = `DELETE FROM operators WHERE id = ?`;
-      this.db.run(sql, [id], function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
-      });
-    });
-  }
-
-  async authenticateOperator(name, password) {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT * FROM operators WHERE name = ?`;
-      this.db.get(sql, [name], async (err, row) => {
-        if (err) reject(err);
-        else if (!row) resolve(null);
-        else {
-          const isValid = await bcrypt.compare(password, row.password_hash);
-          if (isValid) {
-            // Aggiorna ultimo login
-            this.db.run(`UPDATE operators SET last_login = CURRENT_TIMESTAMP WHERE id = ?`, [row.id]);
-            resolve({ id: row.id, name: row.name, isAdmin: row.is_admin });
-          } else {
-            resolve(null);
-          }
-        }
-      });
-    });
-  }
-
-  async getOperators() {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT id, name, is_admin, created_at, last_login FROM operators ORDER BY name`;
-      this.db.all(sql, [], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-  }
-
-  // CASSE
-  async createCashRegister(name, isHidden = false, hiddenPassword = null, description = '', createdBy) {
-    return new Promise((resolve, reject) => {
-      const sql = `INSERT INTO cash_registers (name, is_hidden, hidden_password, description, created_by) VALUES (?, ?, ?, ?, ?)`;
-      this.db.run(sql, [name, isHidden, hiddenPassword, description, createdBy], function(err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID, name, isHidden, description });
-      });
-    });
-  }
-
-  async getCashRegisters(includeHidden = false, hiddenPassword = null) {
-    return new Promise((resolve, reject) => {
-      let sql = `SELECT * FROM cash_registers WHERE 1=1`;
-      const params = [];
-
-      if (!includeHidden) {
-        // Mostra solo casse pubbliche
-        sql += ` AND is_hidden = FALSE`;
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return { success: false, error: 'Password non valida' };
       }
-      // Se includeHidden = true, mostra TUTTE le casse (pubbliche + nascoste)
-      // Non serve verificare la password qui, la verifica è fatta nel backend
 
-      sql += ` ORDER BY name`;
+      // Aggiorna ultimo accesso
+      const updateStmt = this.db.prepare('UPDATE users SET last_login = datetime("now") WHERE id = ?');
+      updateStmt.run(user.id);
 
-      this.db.all(sql, params, (err, rows) => {
-        if (err) {
-          console.error('Errore query casse:', err);
-          reject(err);
-        } else {
-          console.log(`Query casse - includeHidden: ${includeHidden}, SQL: ${sql}, Risultati: ${rows.length}`);
-          console.log('Casse trovate:', rows.map(r => ({ id: r.id, name: r.name, is_hidden: r.is_hidden })));
-          resolve(rows);
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          createdAt: user.created_at
         }
-      });
-    });
+      };
+    } catch (err) {
+      console.error('Errore verifica utente:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async getCashRegisterById(id) {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT * FROM cash_registers WHERE id = ?`;
-      this.db.get(sql, [id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+  // Ottiene tutti gli utenti
+  async getUsers() {
+    try {
+      const stmt = this.db.prepare('SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at DESC');
+      const users = stmt.all();
+      return { success: true, users };
+    } catch (err) {
+      console.error('Errore recupero utenti:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async updateCashRegister(id, updates) {
-    return new Promise((resolve, reject) => {
+  // Aggiorna un utente
+  async updateUser(userId, updates) {
+    try {
       const fields = [];
       const values = [];
 
-      if (updates.name !== undefined) {
-        fields.push('name = ?');
-        values.push(updates.name);
+      if (updates.username) {
+        fields.push('username = ?');
+        values.push(updates.username);
       }
-      if (updates.is_hidden !== undefined) {
-        fields.push('is_hidden = ?');
-        values.push(updates.is_hidden);
+      if (updates.password) {
+        const hashedPassword = await bcrypt.hash(updates.password, 10);
+        fields.push('password = ?');
+        values.push(hashedPassword);
       }
-      if (updates.hidden_password !== undefined) {
-        fields.push('hidden_password = ?');
-        values.push(updates.hidden_password);
-      }
-      if (updates.description !== undefined) {
-        fields.push('description = ?');
-        values.push(updates.description);
+      if (updates.role) {
+        fields.push('role = ?');
+        values.push(updates.role);
       }
 
       if (fields.length === 0) {
-        resolve({ success: true, message: 'Nessun campo da aggiornare' });
-        return;
+        return { success: false, error: 'Nessun campo da aggiornare' };
       }
 
-      values.push(id);
-      const sql = `UPDATE cash_registers SET ${fields.join(', ')} WHERE id = ?`;
+      values.push(userId);
+      const stmt = this.db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
 
-      this.db.run(sql, values, function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
-      });
-    });
+      return { success: true };
+    } catch (err) {
+      console.error('Errore aggiornamento utente:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async deleteCashRegister(id) {
-    return new Promise((resolve, reject) => {
-      // Prima elimina tutti i pagamenti associati alla cassa
-      const deletePaymentsSql = `DELETE FROM payments WHERE cash_register_id = ?`;
-      this.db.run(deletePaymentsSql, [id], (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Poi elimina la cassa
-        const deleteCashSql = `DELETE FROM cash_registers WHERE id = ?`;
-        this.db.run(deleteCashSql, [id], function(err) {
-          if (err) reject(err);
-          else resolve({ success: true, changes: this.changes });
-        });
-      });
-    });
+  // Elimina un utente
+  async deleteUser(userId) {
+    try {
+      const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+      stmt.run(userId);
+      return { success: true };
+    } catch (err) {
+      console.error('Errore eliminazione utente:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  // PAGAMENTI
-  async createPayment(cashRegisterId, customerName, paymentDate, amount, reason, operatorId) {
-    return new Promise((resolve, reject) => {
-      const sql = `INSERT INTO payments (cash_register_id, customer_name, payment_date, amount, reason, operator_id) VALUES (?, ?, ?, ?, ?, ?)`;
-      this.db.run(sql, [cashRegisterId, customerName, paymentDate, amount, reason, operatorId], function(err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID });
-      });
-    });
-  }
-
-  async getPayments(cashRegisterId, startDate = null, endDate = null) {
-    return new Promise((resolve, reject) => {
-      let sql = `
-        SELECT p.*, o.name as operator_name, cr.name as cash_register_name 
-        FROM payments p 
-        JOIN operators o ON p.operator_id = o.id 
-        JOIN cash_registers cr ON p.cash_register_id = cr.id 
-        WHERE p.cash_register_id = ?
-      `;
-      const params = [cashRegisterId];
-
-      if (startDate) {
-        sql += ` AND p.payment_date >= ?`;
-        params.push(startDate);
-      }
-      if (endDate) {
-        sql += ` AND p.payment_date <= ?`;
-        params.push(endDate);
-      }
-
-      sql += ` ORDER BY p.payment_date DESC, p.created_at DESC`;
-
-      this.db.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-  }
-
-  async getPaymentsByCashRegister(cashRegisterId) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT p.*, o.name as operator_name, cr.name as cash_register_name 
-        FROM payments p 
-        JOIN operators o ON p.operator_id = o.id 
-        JOIN cash_registers cr ON p.cash_register_id = cr.id 
-        WHERE p.cash_register_id = ?
-        ORDER BY p.payment_date DESC, p.id DESC
-      `;
+  // Crea un nuovo pagamento
+  async createPayment(payment) {
+    try {
+      const stmt = this.db.prepare(`
+        INSERT INTO payments (amount, description, type, category, date, user_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `);
       
-      this.db.all(sql, [cashRegisterId], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+      const result = stmt.run(
+        payment.amount,
+        payment.description,
+        payment.type,
+        payment.category,
+        payment.date,
+        payment.userId
+      );
+      
+      return { success: true, paymentId: result.lastInsertRowid };
+    } catch (err) {
+      console.error('Errore creazione pagamento:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async updatePayment(paymentId, updates) {
-    const fields = [];
-    const values = [];
+  // Ottiene i pagamenti con filtri
+  async getPayments(filters = {}) {
+    try {
+      let query = 'SELECT * FROM payments WHERE 1=1';
+      const params = [];
 
-    Object.keys(updates).forEach(key => {
-      if (updates[key] !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(updates[key]);
+      if (filters.userId) {
+        query += ' AND user_id = ?';
+        params.push(filters.userId);
       }
-    });
+      if (filters.startDate) {
+        query += ' AND date >= ?';
+        params.push(filters.startDate);
+      }
+      if (filters.endDate) {
+        query += ' AND date <= ?';
+        params.push(filters.endDate);
+      }
+      if (filters.type) {
+        query += ' AND type = ?';
+        params.push(filters.type);
+      }
 
-    if (fields.length === 0) return { success: false, message: 'Nessun campo da aggiornare' };
+      query += ' ORDER BY date DESC, created_at DESC';
 
-    values.push(paymentId);
-    const sql = `UPDATE payments SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const stmt = this.db.prepare(query);
+      const payments = stmt.all(...params);
 
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, values, function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
-      });
-    });
+      // Calcola totale
+      const total = payments.reduce((sum, payment) => {
+        return payment.type === 'income' ? sum + payment.amount : sum - payment.amount;
+      }, 0);
+
+      return { success: true, payments, total };
+    } catch (err) {
+      console.error('Errore recupero pagamenti:', err);
+      return { success: false, error: err.message };
+    }
   }
 
+  // Aggiorna un pagamento
+  async updatePayment(paymentId, updates) {
+    try {
+      const fields = [];
+      const values = [];
+
+      if (updates.amount !== undefined) {
+        fields.push('amount = ?');
+        values.push(updates.amount);
+      }
+      if (updates.description) {
+        fields.push('description = ?');
+        values.push(updates.description);
+      }
+      if (updates.type) {
+        fields.push('type = ?');
+        values.push(updates.type);
+      }
+      if (updates.category) {
+        fields.push('category = ?');
+        values.push(updates.category);
+      }
+      if (updates.date) {
+        fields.push('date = ?');
+        values.push(updates.date);
+      }
+
+      if (fields.length === 0) {
+        return { success: false, error: 'Nessun campo da aggiornare' };
+      }
+
+      values.push(paymentId);
+      const stmt = this.db.prepare(`UPDATE payments SET ${fields.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Errore aggiornamento pagamento:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Elimina un pagamento
   async deletePayment(paymentId) {
-    return new Promise((resolve, reject) => {
-      const sql = `DELETE FROM payments WHERE id = ?`;
-      this.db.run(sql, [paymentId], function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
+    try {
+      const stmt = this.db.prepare('DELETE FROM payments WHERE id = ?');
+      stmt.run(paymentId);
+      return { success: true };
+    } catch (err) {
+      console.error('Errore eliminazione pagamento:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Ottiene statistiche
+  async getStatistics(filters = {}) {
+    try {
+      let query = 'SELECT type, SUM(amount) as total FROM payments WHERE 1=1';
+      const params = [];
+
+      if (filters.userId) {
+        query += ' AND user_id = ?';
+        params.push(filters.userId);
+      }
+      if (filters.startDate) {
+        query += ' AND date >= ?';
+        params.push(filters.startDate);
+      }
+      if (filters.endDate) {
+        query += ' AND date <= ?';
+        params.push(filters.endDate);
+      }
+
+      query += ' GROUP BY type';
+
+      const stmt = this.db.prepare(query);
+      const results = stmt.all(...params);
+
+      const stats = {
+        totalIncome: 0,
+        totalExpenses: 0,
+        netCashFlow: 0
+      };
+
+      results.forEach(row => {
+        if (row.type === 'income') {
+          stats.totalIncome = row.total;
+        } else if (row.type === 'expense') {
+          stats.totalExpenses = row.total;
+        }
       });
-    });
+
+      stats.netCashFlow = stats.totalIncome - stats.totalExpenses;
+
+      return { success: true, statistics: stats };
+    } catch (err) {
+      console.error('Errore recupero statistiche:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  // STATISTICHE
-  async getDailyTotal(cashRegisterId, date = null) {
-    const targetDate = date || new Date().toISOString().split('T')[0];
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE cash_register_id = ? AND payment_date = ?`;
-      this.db.get(sql, [cashRegisterId, targetDate], (err, row) => {
-        if (err) reject(err);
-        else resolve(row.total);
-      });
-    });
+  // Crea backup del database
+  async createBackup() {
+    try {
+      const backupDir = path.join(__dirname, '..', 'data', 'backups');
+      if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(backupDir, `backup_${timestamp}.db`);
+      
+      fs.copyFileSync(this.dbPath, backupPath);
+      
+      return { success: true, backupPath };
+    } catch (err) {
+      console.error('Errore creazione backup:', err);
+      return { success: false, error: err.message };
+    }
   }
 
-  async getWeeklyTotal(cashRegisterId, weekStart = null) {
-    const start = weekStart || this.getWeekStart();
-    const end = this.addDays(start, 6);
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE cash_register_id = ? AND payment_date BETWEEN ? AND ?`;
-      this.db.get(sql, [cashRegisterId, start, end], (err, row) => {
-        if (err) reject(err);
-        else resolve(row.total);
-      });
-    });
-  }
-
-  async getMonthlyTotal(cashRegisterId, year = null, month = null) {
-    const now = new Date();
-    const targetYear = year || now.getFullYear();
-    const targetMonth = month || (now.getMonth() + 1);
-    
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE cash_register_id = ? AND strftime('%Y', payment_date) = ? AND strftime('%m', payment_date) = ?`;
-      this.db.get(sql, [cashRegisterId, targetYear.toString(), targetMonth.toString().padStart(2, '0')], (err, row) => {
-        if (err) reject(err);
-        else resolve(row.total);
-      });
-    });
-  }
-
-  // IMPOSTAZIONI
-  async getSettings() {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT key, value FROM settings`;
-      this.db.all(sql, [], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-  }
-
-  async updateSetting(key, value) {
-    return new Promise((resolve, reject) => {
-      const sql = `INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)`;
-      this.db.run(sql, [key, value], function(err) {
-        if (err) reject(err);
-        else resolve({ success: true, changes: this.changes });
-      });
-    });
-  }
-
-  async getSetting(key) {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT value FROM settings WHERE key = ?`;
-      this.db.get(sql, [key], (err, row) => {
-        if (err) reject(err);
-        else resolve(row?.value);
-      });
-    });
-  }
-
-  // UTILITY
-  getWeekStart(date = null) {
-    const d = date ? new Date(date) : new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d.setDate(diff));
-    return monday.toISOString().split('T')[0];
-  }
-
-  addDays(dateString, days) {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-  }
-
-  // Chiude la connessione
+  // Chiude la connessione al database
   close() {
     if (this.db) {
       this.db.close();
+      console.log('Database chiuso');
     }
   }
 }
 
 module.exports = DatabaseManager;
-
