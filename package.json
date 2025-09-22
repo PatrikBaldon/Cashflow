@@ -11,7 +11,7 @@
     "build:win": "npm run build:frontend && electron-builder --win",
     "build:mac": "npm run build:frontend && electron-builder --mac",
     "build:linux": "npm run build:frontend && electron-builder --linux",
-    "build:all": "npm run build:frontend && electron-builder --win --mac --linux",
+    "build:all": "npm run build:frontend && electron-builder --win --mac",
     "build:all:script": "node scripts/build-all.js",
     "dist": "npm run clean && npm run build",
     "dist:win": "npm run clean && npm run build:win",
@@ -60,6 +60,7 @@
     "directories": {
       "output": "dist"
     },
+    "publish": null,
     "files": [
       "main.js",
       "preload.js",

@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest]
         include:
           - os: windows-latest
             platform: win
@@ -24,9 +24,6 @@ jobs:
           - os: macos-latest
             platform: mac
             artifact: 'Registro Contanti-*.dmg'
-          - os: ubuntu-latest
-            platform: linux
-            artifact: 'Registro Contanti-*.AppImage'
 
     steps:
     - name: Checkout code
@@ -82,8 +79,7 @@ jobs:
           
           ### Download
           - **Windows**: Scarica il file `.exe` per installare l'applicazione
-          - **macOS**: Scarica il file `.dmg` per installare l'applicazione  
-          - **Linux**: Scarica il file `.AppImage` per eseguire l'applicazione
+          - **macOS**: Scarica il file `.dmg` per installare l'applicazione
           
           ### Installazione
           1. Scarica il file appropriato per il tuo sistema operativo
@@ -98,7 +94,6 @@ jobs:
         files: |
           artifacts/win-build/*
           artifacts/mac-build/*
-          artifacts/linux-build/*
         draft: false
         prerelease: false
       env:
