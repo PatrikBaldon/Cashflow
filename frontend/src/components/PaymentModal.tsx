@@ -27,7 +27,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ payment, onClose }) => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    reset,
     setValue
   } = useForm<PaymentForm>({
     defaultValues: {

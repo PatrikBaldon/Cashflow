@@ -1,8 +1,7 @@
 import React from 'react'
-import { Edit2, Trash2, Eye } from 'lucide-react'
+import { Edit2, Trash2 } from 'lucide-react'
 import { useCashStore } from '../stores/cashStore'
 import { formatCurrency, formatDate, formatDateTime } from '../utils/format'
-import toast from 'react-hot-toast'
 
 interface PaymentsTableProps {
   onEditPayment: (payment: any) => void

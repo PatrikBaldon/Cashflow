@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { X, Plus, Lock, Eye, Edit, Trash2 } from 'lucide-react'
+import { X, Plus, Lock, Edit, Trash2 } from 'lucide-react'
 import { useCashStore } from '../stores/cashStore'
 import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
@@ -21,7 +21,7 @@ const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) =>
   const { hasHiddenAccess, user } = useAuthStore()
   const [showNewForm, setShowNewForm] = useState(false)
   const [editingCash, setEditingCash] = useState<any>(null)
-  const [deletingCash, setDeletingCash] = useState<any>(null)
+  const [deletingCash] = useState<any>(null)
 
   const {
     register,

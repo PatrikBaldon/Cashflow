@@ -40,7 +40,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   })
 
   const newPassword = watch('newHiddenPassword')
-  const confirmPassword = watch('confirmHiddenPassword')
+  // const confirmPassword = watch('confirmHiddenPassword')
 
   // Solo admin può vedere questo modal
   if (!user?.isAdmin) {
@@ -52,7 +52,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       const result = await window.electronAPI.settings.get()
       if (result.success) {
         setSettings(result.data)
-        const hiddenPassword = result.data.find(s => s.key === 'default_hidden_password')?.value || ''
+        const hiddenPassword = result.data.find((s: any) => s.key === 'default_hidden_password')?.value || ''
         reset({
           hiddenPassword,
           newHiddenPassword: '',
@@ -122,7 +122,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           toast.error(result.message || 'Errore aggiornamento password')
         }
       } else {
-        toast.info('Nessuna modifica da salvare')
+        toast('Nessuna modifica da salvare')
       }
     } catch (error) {
       console.error('Errore aggiornamento impostazioni:', error)

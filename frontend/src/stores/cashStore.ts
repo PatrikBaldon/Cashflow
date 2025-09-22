@@ -39,7 +39,7 @@ interface CashState {
   selectCashRegister: (register: CashRegister | null) => void
   loadPayments: (cashRegisterId: number) => Promise<void>
   loadStatistics: (cashRegisterId: number) => Promise<void>
-  createPayment: (payment: Omit<Payment, 'id' | 'operator_name' | 'created_at' | 'updated_at'>) => Promise<boolean>
+  createPayment: (payment: Omit<Payment, 'id' | 'operator_name' | 'created_at' | 'updated_at'>, operatorId: number) => Promise<boolean>
   updatePayment: (id: number, updates: Partial<Payment>) => Promise<boolean>
   deletePayment: (id: number) => Promise<boolean>
   createCashRegister: (register: Omit<CashRegister, 'id' | 'created_at'>) => Promise<boolean>
@@ -60,7 +60,7 @@ export const useCashStore = create<CashState>((set, get) => ({
         includeHidden: includeHidden
       })
       
-      if (result.success) {
+      if (result.success && result.data) {
         set({ cashRegisters: result.data })
         // Seleziona automaticamente la prima cassa solo se non ce n'è una selezionata
         console.log('Cash registers loaded:', result.data.length)
@@ -110,7 +110,7 @@ export const useCashStore = create<CashState>((set, get) => ({
     try {
       const result = await window.electronAPI.payments.get({ cashRegisterId })
       
-      if (result.success) {
+      if (result.success && result.data) {
         set({ payments: result.data })
       } else {
         toast.error(result.message || 'Errore caricamento pagamenti')
@@ -134,9 +134,9 @@ export const useCashStore = create<CashState>((set, get) => ({
       if (dailyResult.success && weeklyResult.success && monthlyResult.success) {
         set({
           statistics: {
-            daily: dailyResult.data.total,
-            weekly: weeklyResult.data.total,
-            monthly: monthlyResult.data.total
+            daily: dailyResult.data?.total || 0,
+            weekly: weeklyResult.data?.total || 0,
+            monthly: monthlyResult.data?.total || 0
           }
         })
       }
@@ -145,7 +145,7 @@ export const useCashStore = create<CashState>((set, get) => ({
     }
   },
 
-  createPayment: async (payment, operatorId) => {
+  createPayment: async (payment: Omit<Payment, 'id' | 'operator_name' | 'created_at' | 'updated_at'>, operatorId: number) => {
     try {
       if (!operatorId) {
         toast.error('ID operatore mancante')

@@ -45,10 +45,10 @@ const MainScreen: React.FC = () => {
     setShowPaymentModal(true)
   }
 
-  const handleLockHiddenCash = async () => {
-    await lockHiddenCash()
-    await loadCashRegisters()
-  }
+  // const handleLockHiddenCash = async () => {
+  //   await lockHiddenCash()
+  //   await loadCashRegisters()
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,7 +101,7 @@ const MainScreen: React.FC = () => {
                     {user?.name}
                   </span>
                   {Boolean(user?.isAdmin) && (
-                    <Shield className="h-4 w-4 text-blue-600 ml-2" title="Amministratore" />
+                    <Shield className="h-4 w-4 text-blue-600 ml-2" />
                   )}
                 </div>
                 <button

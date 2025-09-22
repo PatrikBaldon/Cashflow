@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Toaster } from 'react-hot-toast'
 import LoginScreen from './components/LoginScreen'
 import MainScreen from './components/MainScreen'
@@ -6,7 +6,7 @@ import { useAuthStore } from './stores/authStore'
 import { useCashStore } from './stores/cashStore'
 
 function App() {
-  const { user, isAuthenticated, checkAuth } = useAuthStore()
+  const { isAuthenticated, checkAuth } = useAuthStore()
   const { loadCashRegisters } = useCashStore()
   const [isLoading, setIsLoading] = useState(true)
 
