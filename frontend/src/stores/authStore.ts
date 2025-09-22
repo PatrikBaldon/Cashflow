@@ -75,19 +75,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   unlockHiddenCash: async (password) => {
     try {
+      console.log('Attempting to unlock hidden cash with password:', password)
       const result = await window.electronAPI.auth.unlockHiddenCash(password)
+      console.log('Unlock result:', result)
       
       if (result.success) {
         set({ hasHiddenAccess: true })
-        toast.success('Accesso alle casse nascoste sbloccato')
+        console.log('Hidden cash access granted')
         return true
       } else {
-        toast.error('Password non valida')
+        console.log('Unlock failed:', (result as any).message || 'Unknown error')
         return false
       }
     } catch (error) {
       console.error('Errore sblocco casse nascoste:', error)
-      toast.error('Errore durante lo sblocco')
       return false
     }
   },
@@ -96,7 +97,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await window.electronAPI.auth.lockHiddenCash()
       set({ hasHiddenAccess: false })
-      toast.success('Casse nascoste bloccate')
     } catch (error) {
       console.error('Errore blocco casse nascoste:', error)
       toast.error('Errore durante il blocco')
@@ -105,8 +105,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkHiddenAccess: async () => {
     try {
-      const result = await window.electronAPI.auth.checkHiddenAccess()
-      set({ hasHiddenAccess: result })
+      const hasAccess = await window.electronAPI.auth.checkHiddenAccess()
+      set({ hasHiddenAccess: hasAccess })
     } catch (error) {
       console.error('Errore verifica accesso casse nascoste:', error)
     }

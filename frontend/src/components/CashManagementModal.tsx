@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { X, Plus, Lock, Edit, Trash2 } from 'lucide-react'
+import { X, Plus, Edit, Trash2, Lock } from 'lucide-react'
 import { useCashStore } from '../stores/cashStore'
 import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
@@ -98,7 +98,7 @@ const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) =>
         
         if (result.success) {
           toast.success('Cassa eliminata con successo')
-          await loadCashRegisters(hasHiddenAccess)
+          await loadCashRegisters()
         } else {
           toast.error(result.message || 'Errore durante l\'eliminazione')
         }
@@ -260,6 +260,7 @@ const CashManagementModal: React.FC<CashManagementModalProps> = ({ onClose }) =>
                       </p>
                     </div>
                   )}
+
 
                   <div className="flex justify-end space-x-3 pt-4">
                     <button

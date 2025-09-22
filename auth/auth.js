@@ -11,6 +11,8 @@ class AuthManager {
 
   async initialize() {
     await this.db.initialize();
+    // Always lock hidden cash registers on app startup
+    this.hiddenCashPassword = null;
   }
 
   setupIpcHandlers() {
@@ -33,6 +35,7 @@ class AuthManager {
     // Logout
     ipcMain.handle('auth-logout', async () => {
       this.currentUser = null;
+      // Always lock hidden cash registers on logout
       this.hiddenCashPassword = null;
       return { success: true };
     });
@@ -45,19 +48,27 @@ class AuthManager {
     // Accesso casse nascoste (solo per admin)
     ipcMain.handle('auth-unlock-hidden-cash', async (event, password) => {
       try {
+        console.log('AuthManager: Unlock attempt with password:', password);
+        console.log('AuthManager: Current user:', this.currentUser);
+        console.log('AuthManager: Is admin:', this.currentUser?.isAdmin);
+        
         // Solo gli admin possono accedere alle casse nascoste
         if (!this.currentUser?.isAdmin) {
+          console.log('AuthManager: User is not admin');
           return { success: false, message: 'Solo gli amministratori possono accedere alle casse nascoste' };
         }
 
         // Verifica password per casse nascoste
         const settings = await this.db.getSettings();
         const defaultPassword = settings.find(s => s.key === 'default_hidden_password')?.value || 'admin123';
+        console.log('AuthManager: Default password from settings:', defaultPassword);
         
         if (password === defaultPassword) {
           this.hiddenCashPassword = password;
+          console.log('AuthManager: Password correct, access granted');
           return { success: true };
         } else {
+          console.log('AuthManager: Password incorrect');
           return { success: false, message: 'Password non valida per le casse nascoste' };
         }
       } catch (error) {
@@ -74,18 +85,12 @@ class AuthManager {
 
     // Verifica accesso casse nascoste
     ipcMain.handle('auth-check-hidden-access', () => {
-      return { hasAccess: !!this.hiddenCashPassword };
+      return !!this.hiddenCashPassword;
     });
   }
 
   async getSettings() {
-    return new Promise((resolve, reject) => {
-      const sql = `SELECT key, value FROM settings`;
-      this.db.db.all(sql, [], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    return await this.db.getSettings();
   }
 
   getCurrentUser() {

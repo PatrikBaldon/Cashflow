@@ -71,6 +71,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportAllCash: (data) => ipcRenderer.invoke('excel-export-all-cash', data),
   },
   
+  // File dialogs
+  dialog: {
+    showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
+  },
+  
   // File operations
   openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
   saveFile: (filePath, data) => ipcRenderer.invoke('save-file', filePath, data),

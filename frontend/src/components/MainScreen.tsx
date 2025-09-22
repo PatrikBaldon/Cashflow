@@ -22,8 +22,14 @@ const MainScreen: React.FC = () => {
   const [showExcelExport, setShowExcelExport] = useState(false)
   const [editingPayment, setEditingPayment] = useState(null)
 
-  // Ricarica le casse quando cambia l'accesso alle casse nascoste
+  // Carica le casse pubbliche di default
   useEffect(() => {
+    loadCashRegisters(false)
+  }, [loadCashRegisters])
+
+  // Ricarica le casse quando l'accesso alle casse nascoste cambia
+  useEffect(() => {
+    console.log('MainScreen: hasHiddenAccess changed to:', hasHiddenAccess)
     loadCashRegisters(hasHiddenAccess)
   }, [hasHiddenAccess, loadCashRegisters])
 

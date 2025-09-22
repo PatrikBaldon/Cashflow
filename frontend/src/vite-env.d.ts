@@ -55,8 +55,13 @@ declare global {
       
       // Excel export
       excel: {
-        exportPayments: (data: any) => Promise<{ success: boolean; filePath?: string; message?: string }>;
-        exportAllCash: (data: any) => Promise<{ success: boolean; filePath?: string; message?: string }>;
+        exportPayments: (data: { cashRegisterId: number; includeHidden?: boolean; filePath?: string }) => Promise<{ success: boolean; filePath?: string; fileName?: string; message?: string }>;
+        exportAllCash: (data: { includeHidden?: boolean; filePath?: string }) => Promise<{ success: boolean; filePath?: string; fileName?: string; message?: string }>;
+      };
+      
+      // File dialogs
+      dialog: {
+        showSaveDialog: (options?: { title?: string; defaultPath?: string }) => Promise<{ success: boolean; filePath?: string; canceled?: boolean; error?: string }>;
       };
       
       // File operations

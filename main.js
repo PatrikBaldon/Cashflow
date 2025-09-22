@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 
@@ -34,10 +34,14 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
+    console.log('Loading development server at http://localhost:3000');
     mainWindow.loadURL('http://localhost:3000');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'frontend/dist/index.html'));
+    const indexPath = path.join(__dirname, 'frontend/dist/index.html');
+    console.log('Loading static file from:', indexPath);
+    console.log('File exists:', require('fs').existsSync(indexPath));
+    mainWindow.loadFile(indexPath);
   }
 
   // Set Content Security Policy for security
@@ -60,7 +64,17 @@ function createWindow() {
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    console.log('Window ready to show');
     mainWindow.show();
+  });
+
+  // Handle loading errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', errorCode, errorDescription, validatedURL);
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Page finished loading');
   });
 
   // Handle window closed
@@ -84,6 +98,9 @@ app.whenReady().then(async () => {
   // Assicurati che cashService abbia il riferimento all'authManager
   cashService.setAuthManager(authManager);
   
+  // Setup IPC handlers
+  setupIpcHandlers();
+  
   createWindow();
   createMenu();
 
@@ -106,6 +123,36 @@ app.on('before-quit', () => {
   if (cashService) cashService.close();
   if (userService) userService.close();
 });
+
+// Setup IPC handlers
+function setupIpcHandlers() {
+  // File save dialog for Excel exports
+  ipcMain.handle('show-save-dialog', async (event, options) => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: options.title || 'Salva file Excel',
+        defaultPath: options.defaultPath || path.join(require('os').homedir(), 'Downloads'),
+        filters: [
+          { name: 'File Excel', extensions: ['xlsx'] },
+          { name: 'Tutti i file', extensions: ['*'] }
+        ],
+        properties: ['createDirectory']
+      });
+      
+      return {
+        success: !result.canceled,
+        filePath: result.filePath,
+        canceled: result.canceled
+      };
+    } catch (error) {
+      console.error('Errore nel dialog di salvataggio:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  });
+}
 
 // Create application menu
 function createMenu() {

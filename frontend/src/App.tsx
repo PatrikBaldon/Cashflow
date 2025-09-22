@@ -15,7 +15,7 @@ function App() {
       try {
         await checkAuth()
         if (isAuthenticated) {
-          await loadCashRegisters()
+          await loadCashRegisters() // Carica solo le casse pubbliche
         }
       } catch (error) {
         console.error('Errore inizializzazione app:', error)

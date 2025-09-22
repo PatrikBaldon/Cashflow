@@ -10,7 +10,7 @@ class ExcelService {
 
   setupIpcHandlers() {
     // Export pagamenti per cassa
-    ipcMain.handle('excel-export-payments', async (event, { cashRegisterId, includeHidden = false }) => {
+    ipcMain.handle('excel-export-payments', async (event, { cashRegisterId, includeHidden = false, filePath = null }) => {
       try {
         const Database = require('../database/database')
         const db = new Database()
@@ -60,18 +60,29 @@ class ExcelService {
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
         const fileName = `pagamenti_${cashRegister.name.replace(/\s+/g, '_')}_${timestamp}.xlsx`
         
-        // Salva il file nella cartella downloads
-        const downloadsPath = path.join(require('os').homedir(), 'Downloads')
-        const filePath = path.join(downloadsPath, fileName)
+        // Determina il percorso del file
+        let finalFilePath
+        if (filePath) {
+          // Se è stato fornito un percorso personalizzato, usalo
+          finalFilePath = filePath
+        } else {
+          // Altrimenti usa la cartella Downloads
+          const downloadsPath = path.join(require('os').homedir(), 'Downloads')
+          finalFilePath = path.join(downloadsPath, fileName)
+          await fs.mkdir(downloadsPath, { recursive: true })
+        }
         
-        await fs.mkdir(downloadsPath, { recursive: true })
-        XLSX.writeFile(workbook, filePath)
+        // Crea la directory se non esiste
+        const dir = path.dirname(finalFilePath)
+        await fs.mkdir(dir, { recursive: true })
+        
+        XLSX.writeFile(workbook, finalFilePath)
 
         return { 
           success: true, 
-          message: `File Excel salvato in: ${filePath}`,
-          filePath: filePath,
-          fileName: fileName
+          message: `File Excel salvato in: ${finalFilePath}`,
+          filePath: finalFilePath,
+          fileName: path.basename(finalFilePath)
         }
       } catch (error) {
         console.error('Errore export Excel:', error)
@@ -80,7 +91,7 @@ class ExcelService {
     })
 
     // Export tutte le casse (incluse nascoste se sbloccate)
-    ipcMain.handle('excel-export-all-cash', async (event, { includeHidden = false }) => {
+    ipcMain.handle('excel-export-all-cash', async (event, { includeHidden = false, filePath = null }) => {
       try {
         const Database = require('../database/database')
         const db = new Database()
@@ -135,18 +146,29 @@ class ExcelService {
         const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-')
         const fileName = `tutte_le_casse_${timestamp}.xlsx`
         
-        // Salva il file nella cartella downloads
-        const downloadsPath = path.join(require('os').homedir(), 'Downloads')
-        const filePath = path.join(downloadsPath, fileName)
+        // Determina il percorso del file
+        let finalFilePath
+        if (filePath) {
+          // Se è stato fornito un percorso personalizzato, usalo
+          finalFilePath = filePath
+        } else {
+          // Altrimenti usa la cartella Downloads
+          const downloadsPath = path.join(require('os').homedir(), 'Downloads')
+          finalFilePath = path.join(downloadsPath, fileName)
+          await fs.mkdir(downloadsPath, { recursive: true })
+        }
         
-        await fs.mkdir(downloadsPath, { recursive: true })
-        XLSX.writeFile(workbook, filePath)
+        // Crea la directory se non esiste
+        const dir = path.dirname(finalFilePath)
+        await fs.mkdir(dir, { recursive: true })
+        
+        XLSX.writeFile(workbook, finalFilePath)
 
         return { 
           success: true, 
-          message: `File Excel salvato in: ${filePath}`,
-          filePath: filePath,
-          fileName: fileName
+          message: `File Excel salvato in: ${finalFilePath}`,
+          filePath: finalFilePath,
+          fileName: path.basename(finalFilePath)
         }
       } catch (error) {
         console.error('Errore export Excel tutte le casse:', error)

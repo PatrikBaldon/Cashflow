@@ -40,12 +40,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   })
 
   const newPassword = watch('newHiddenPassword')
-  // const confirmPassword = watch('confirmHiddenPassword')
-
-  // Solo admin può vedere questo modal
-  if (!user?.isAdmin) {
-    return null
-  }
 
   const loadSettings = async () => {
     try {
@@ -68,12 +62,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     if (passwordInput.trim()) {
       const success = await unlockHiddenCash(passwordInput)
       if (success) {
+        // Ricarica le casse con quelle nascoste incluse
         await loadCashRegisters(true)
         setShowPasswordPrompt(false)
         setPasswordInput('')
-        toast.success('Casse riservate sbloccate')
-      } else {
-        toast.error('Password non corretta')
       }
     }
   }
@@ -122,7 +114,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           toast.error(result.message || 'Errore aggiornamento password')
         }
       } else {
-        toast('Nessuna modifica da salvare')
+        // Se non c'è una nuova password da salvare, non mostrare il messaggio
+        // perché potrebbe essere che l'utente stia solo verificando la password attuale
       }
     } catch (error) {
       console.error('Errore aggiornamento impostazioni:', error)
@@ -131,6 +124,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       setIsLoading(false)
     }
   }
+
+  // Solo admin può vedere questo modal
+  if (!user?.isAdmin) {
+    return null
+  }
+
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -163,7 +163,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Controlli Casse Nascoste - Nascosti */}
+          {/* Controlli Casse Nascoste */}
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <h4 className="text-md font-medium text-gray-900">Controlli Avanzati</h4>
@@ -190,7 +190,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                         onClick={async () => {
                           await lockHiddenCash()
                           await loadCashRegisters(false)
-                          toast.success('Casse riservate bloccate')
                         }}
                         className="btn btn-outline btn-sm"
                       >
@@ -371,6 +370,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           </div>
         </div>
       )}
+
     </div>
   )
 }

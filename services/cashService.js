@@ -20,23 +20,23 @@ class CashService {
     // Gestione casse
     ipcMain.handle('cash-get-registers', async (event, { includeHidden = false, hiddenPassword = null } = {}) => {
       try {
+        console.log('CashService: Getting registers with includeHidden:', includeHidden);
+        console.log('CashService: AuthManager available:', !!this.authManager);
+        console.log('CashService: Has hidden access:', this.authManager?.hasHiddenCashAccess());
+        
         // Se includeHidden è true, verifica che l'utente abbia accesso alle casse nascoste
         if (includeHidden) {
-          console.log('Richiesta casse nascoste - verifico accesso...');
-          console.log('AuthManager presente:', !!this.authManager);
-          if (this.authManager) {
-            console.log('Has hidden access:', this.authManager.hasHiddenCashAccess());
-          }
-          
           // Verifica se l'utente corrente ha accesso alle casse nascoste
           if (!this.authManager || !this.authManager.hasHiddenCashAccess()) {
-            console.log('Accesso alle casse nascoste negato');
-            return { success: false, message: 'Accesso alle casse nascoste non autorizzato' };
+            console.log('CashService: No hidden access, returning public registers only');
+            // Non restituire errore, restituisci solo le casse pubbliche
+            const registers = await this.db.getCashRegisters(false);
+            return { success: true, data: registers };
           }
-          console.log('Accesso alle casse nascoste autorizzato');
         }
         
         const registers = await this.db.getCashRegisters(includeHidden);
+        console.log('CashService: Returning registers:', registers.length, 'registers');
         return { success: true, data: registers };
       } catch (error) {
         console.error('Errore recupero casse:', error);
@@ -46,6 +46,12 @@ class CashService {
 
     ipcMain.handle('cash-create-register', async (event, { name, isHidden = false, hiddenPassword = null, description = '', createdBy = 1 }) => {
       try {
+        // Se è una cassa nascosta, verifica che l'utente abbia accesso
+        if (isHidden && (!this.authManager || !this.authManager.hasHiddenCashAccess())) {
+          // Non permettere la creazione di casse nascoste senza accesso
+          return { success: false, message: 'Accesso alle casse nascoste non autorizzato' };
+        }
+        
         const register = await this.db.createCashRegister(name, isHidden, hiddenPassword, description, createdBy);
         return { success: true, data: register };
       } catch (error) {

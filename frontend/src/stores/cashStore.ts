@@ -56,15 +56,16 @@ export const useCashStore = create<CashState>((set, get) => ({
   loadCashRegisters: async (includeHidden = false) => {
     set({ isLoading: true })
     try {
-      // Non possiamo usare useAuthStore.getState() qui, passiamo includeHidden come parametro
+      console.log('Loading cash registers with includeHidden:', includeHidden)
       const result = await window.electronAPI.cash.getRegisters({
-        includeHidden: includeHidden
+        includeHidden
       })
+      
+      console.log('Cash registers API result:', result)
       
       if (result.success && result.data) {
         set({ cashRegisters: result.data })
-        // Seleziona automaticamente la prima cassa solo se non ce n'è una selezionata
-        console.log('Cash registers loaded:', result.data.length)
+        console.log('Cash registers loaded:', result.data.length, 'registers:', result.data)
         if (result.data.length > 0) {
           const { selectedCashRegister } = get()
           console.log('Current selected cash register:', selectedCashRegister)
@@ -86,6 +87,7 @@ export const useCashStore = create<CashState>((set, get) => ({
           }
         }
       } else {
+        console.error('Error loading cash registers:', result.message)
         toast.error(result.message || 'Errore caricamento casse')
       }
     } catch (error) {
@@ -229,7 +231,7 @@ export const useCashStore = create<CashState>((set, get) => ({
 
       if (result.success) {
         toast.success('Cassa creata con successo')
-        get().loadCashRegisters()
+        get().loadCashRegisters() // Carica solo le casse pubbliche
         return true
       } else {
         toast.error(result.message || 'Errore creazione cassa')
