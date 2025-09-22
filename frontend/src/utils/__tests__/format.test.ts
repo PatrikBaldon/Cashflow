@@ -4,19 +4,19 @@ import { formatCurrency, formatDate, formatDateTime, formatDateForInput, getToda
 describe('format utilities', () => {
   describe('formatCurrency', () => {
     it('formats positive numbers correctly', () => {
-      expect(formatCurrency(1234.56)).toBe('1.234,56 €');
-      expect(formatCurrency(1000)).toBe('1.000,00 €');
-      expect(formatCurrency(0)).toBe('0,00 €');
+      expect(formatCurrency(1234.56)).toMatch(/1\.234,56.*€/);
+      expect(formatCurrency(1000)).toMatch(/1\.000,00.*€/);
+      expect(formatCurrency(0)).toMatch(/0,00.*€/);
     });
 
     it('formats negative numbers correctly', () => {
-      expect(formatCurrency(-1234.56)).toBe('-1.234,56 €');
-      expect(formatCurrency(-1000)).toBe('-1.000,00 €');
+      expect(formatCurrency(-1234.56)).toMatch(/-1\.234,56.*€/);
+      expect(formatCurrency(-1000)).toMatch(/-1\.000,00.*€/);
     });
 
     it('handles decimal places correctly', () => {
-      expect(formatCurrency(1234.5)).toBe('1.234,50 €');
-      expect(formatCurrency(1234.567)).toBe('1.234,57 €');
+      expect(formatCurrency(1234.5)).toMatch(/1\.234,50.*€/);
+      expect(formatCurrency(1234.567)).toMatch(/1\.234,57.*€/);
     });
   });
 

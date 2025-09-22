@@ -62,7 +62,7 @@ describe('LoginScreen', () => {
     
     await waitFor(() => {
       expect(mockElectronAPI.auth.login).toHaveBeenCalledWith({
-        username: 'testuser',
+        name: 'testuser',
         password: 'testpass'
       });
     });
