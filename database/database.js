@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3');
+const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -13,28 +13,45 @@ class DatabaseManager {
 
   // Inizializza il database
   async initialize() {
-    try {
-      this.db = new Database(this.dbPath);
-      console.log('Database connesso con successo');
-      await this.createTables();
-    } catch (err) {
-      console.error('Errore apertura database:', err);
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      try {
+        this.db = new sqlite3.Database(this.dbPath, (err) => {
+          if (err) {
+            console.error('Errore apertura database:', err);
+            reject(err);
+          } else {
+            console.log('Database connesso con successo');
+            this.createTables().then(resolve).catch(reject);
+          }
+        });
+      } catch (err) {
+        console.error('Errore apertura database:', err);
+        reject(err);
+      }
+    });
   }
 
   // Crea le tabelle se non esistono
   async createTables() {
-    try {
-      const schemaPath = path.join(__dirname, 'schema.sql');
-      const schema = fs.readFileSync(schemaPath, 'utf8');
-      
-      this.db.exec(schema);
-      console.log('Tabelle create/verificate con successo');
-    } catch (err) {
-      console.error('Errore creazione tabelle:', err);
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      try {
+        const schemaPath = path.join(__dirname, 'schema.sql');
+        const schema = fs.readFileSync(schemaPath, 'utf8');
+        
+        this.db.exec(schema, (err) => {
+          if (err) {
+            console.error('Errore creazione tabelle:', err);
+            reject(err);
+          } else {
+            console.log('Tabelle create/verificate con successo');
+            resolve();
+          }
+        });
+      } catch (err) {
+        console.error('Errore creazione tabelle:', err);
+        reject(err);
+      }
+    });
   }
 
   // Gestisce la chiave di crittografia
@@ -359,46 +376,70 @@ class DatabaseManager {
   
   // Autentica un operatore
   async authenticateOperator(name, password) {
-    try {
-      const stmt = this.db.prepare('SELECT * FROM operators WHERE name = ?');
-      const operator = stmt.get(name);
-      
-      if (!operator) {
-        return null;
+    return new Promise((resolve, reject) => {
+      try {
+        this.db.get('SELECT * FROM operators WHERE name = ?', [name], async (err, operator) => {
+          if (err) {
+            console.error('Errore autenticazione operatore:', err);
+            reject(err);
+            return;
+          }
+          
+          if (!operator) {
+            resolve(null);
+            return;
+          }
+
+          try {
+            const isValid = await bcrypt.compare(password, operator.password_hash);
+            if (!isValid) {
+              resolve(null);
+              return;
+            }
+
+            // Aggiorna ultimo accesso
+            this.db.run('UPDATE operators SET last_login = datetime(\'now\') WHERE id = ?', [operator.id], (updateErr) => {
+              if (updateErr) {
+                console.error('Errore aggiornamento ultimo accesso:', updateErr);
+              }
+              
+              resolve({
+                id: operator.id,
+                name: operator.name,
+                isAdmin: operator.is_admin,
+                createdAt: operator.created_at,
+                lastLogin: operator.last_login
+              });
+            });
+          } catch (bcryptErr) {
+            console.error('Errore bcrypt:', bcryptErr);
+            reject(bcryptErr);
+          }
+        });
+      } catch (err) {
+        console.error('Errore autenticazione operatore:', err);
+        reject(err);
       }
-
-      const isValid = await bcrypt.compare(password, operator.password_hash);
-      if (!isValid) {
-        return null;
-      }
-
-      // Aggiorna ultimo accesso
-      const updateStmt = this.db.prepare('UPDATE operators SET last_login = datetime(\'now\') WHERE id = ?');
-      updateStmt.run(operator.id);
-
-      return {
-        id: operator.id,
-        name: operator.name,
-        isAdmin: operator.is_admin,
-        createdAt: operator.created_at,
-        lastLogin: operator.last_login
-      };
-    } catch (err) {
-      console.error('Errore autenticazione operatore:', err);
-      throw err;
-    }
+    });
   }
 
   // Ottiene tutti gli operatori
   async getOperators() {
-    try {
-      const stmt = this.db.prepare('SELECT id, name, is_admin, created_at, last_login FROM operators ORDER BY created_at DESC');
-      const operators = stmt.all();
-      return operators;
-    } catch (err) {
-      console.error('Errore recupero operatori:', err);
-      throw err;
-    }
+    return new Promise((resolve, reject) => {
+      try {
+        this.db.all('SELECT id, name, is_admin, created_at, last_login FROM operators ORDER BY created_at DESC', (err, rows) => {
+          if (err) {
+            console.error('Errore recupero operatori:', err);
+            reject(err);
+          } else {
+            resolve(rows);
+          }
+        });
+      } catch (err) {
+        console.error('Errore recupero operatori:', err);
+        reject(err);
+      }
+    });
   }
 
   // Ottiene un operatore per ID
@@ -788,8 +829,13 @@ class DatabaseManager {
   // Chiude la connessione al database
   close() {
     if (this.db) {
-      this.db.close();
-      console.log('Database chiuso');
+      this.db.close((err) => {
+        if (err) {
+          console.error('Errore chiusura database:', err);
+        } else {
+          console.log('Database chiuso');
+        }
+      });
     }
   }
 }
