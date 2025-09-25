@@ -46,8 +46,7 @@ jobs:
       run: npm ci
       continue-on-error: true
 
-    - name: Rebuild better-sqlite3 for Electron (Windows only)
-      if: matrix.platform == 'win'
+    - name: Rebuild native dependencies for Electron
       run: npm run rebuild
       continue-on-error: true
 
