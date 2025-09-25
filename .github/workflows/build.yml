@@ -38,13 +38,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Rebuild native modules for Electron (Windows only)
-      if: matrix.platform == 'win'
-      run: npx electron-rebuild
-
-    - name: Install Windows build tools (Windows only)
-      if: matrix.platform == 'win'
-      run: npm install --global windows-build-tools
 
     - name: Install frontend dependencies
       run: cd frontend && npm ci
