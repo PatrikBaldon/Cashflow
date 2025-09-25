@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
-import { X, Settings, Lock, Eye, EyeOff, Unlock } from 'lucide-react'
+import React, { useState } from 'react'
+import { X, Settings, Lock, Unlock, Key, RefreshCw } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useCashStore } from '../stores/cashStore'
-import toast from 'react-hot-toast'
-
-interface SettingsForm {
-  hiddenPassword: string
-  newHiddenPassword: string
-  confirmHiddenPassword: string
-}
+import HiddenPasswordResetModal from './HiddenPasswordResetModal'
 
 interface SettingsModalProps {
   onClose: () => void
@@ -18,45 +11,11 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { user, hasHiddenAccess, unlockHiddenCash, lockHiddenCash } = useAuthStore()
   const { loadCashRegisters } = useCashStore()
-  const [settings, setSettings] = useState<any[]>([])
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [showHiddenSection, setShowHiddenSection] = useState(false)
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
+  const [showHiddenPasswordReset, setShowHiddenPasswordReset] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    watch
-  } = useForm<SettingsForm>({
-    defaultValues: {
-      hiddenPassword: '',
-      newHiddenPassword: '',
-      confirmHiddenPassword: ''
-    }
-  })
-
-  const newPassword = watch('newHiddenPassword')
-
-  const loadSettings = async () => {
-    try {
-      const result = await window.electronAPI.settings.get()
-      if (result.success) {
-        setSettings(result.data)
-        const hiddenPassword = result.data.find((s: any) => s.key === 'default_hidden_password')?.value || ''
-        reset({
-          hiddenPassword,
-          newHiddenPassword: '',
-          confirmHiddenPassword: ''
-        })
-      }
-    } catch (error) {
-      console.error('Errore caricamento impostazioni:', error)
-    }
-  }
 
   const handlePasswordSubmit = async () => {
     if (passwordInput.trim()) {
@@ -75,55 +34,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     setPasswordInput('')
   }
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
 
-  const onSubmit = async (data: SettingsForm) => {
-    setIsLoading(true)
-    try {
-      // Verifica password attuale
-      const currentPassword = settings.find(s => s.key === 'default_hidden_password')?.value || 'admin123'
-      if (data.hiddenPassword !== currentPassword) {
-        toast.error('Password attuale non corretta')
-        return
-      }
-
-      // Verifica nuova password
-      if (data.newHiddenPassword && data.newHiddenPassword !== data.confirmHiddenPassword) {
-        toast.error('Le nuove password non coincidono')
-        return
-      }
-
-      // Aggiorna password
-      if (data.newHiddenPassword) {
-        const result = await window.electronAPI.settings.update({
-          key: 'default_hidden_password',
-          value: data.newHiddenPassword
-        })
-        
-        if (result.success) {
-          toast.success('Password casse nascoste aggiornata con successo')
-          loadSettings()
-          reset({
-            hiddenPassword: data.newHiddenPassword,
-            newHiddenPassword: '',
-            confirmHiddenPassword: ''
-          })
-        } else {
-          toast.error(result.message || 'Errore aggiornamento password')
-        }
-      } else {
-        // Se non c'è una nuova password da salvare, non mostrare il messaggio
-        // perché potrebbe essere che l'utente stia solo verificando la password attuale
-      }
-    } catch (error) {
-      console.error('Errore aggiornamento impostazioni:', error)
-      toast.error('Errore durante l\'aggiornamento')
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   // Solo admin può vedere questo modal
   if (!user?.isAdmin) {
@@ -177,8 +88,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </div>
             
             {showHiddenSection && (
-              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
+              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
+                {/* Controllo Casse Riservate */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <Lock className="h-5 w-5 text-gray-600 mr-2" />
                     <span className="text-sm font-medium text-gray-900">Casse Riservate</span>
@@ -208,6 +120,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     )}
                   </div>
                 </div>
+
+                {/* Reset Password Casse Nascoste */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="flex items-center">
+                    <Key className="h-5 w-5 text-gray-600 mr-2" />
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">Reset Password Casse Nascoste</span>
+                      <p className="text-xs text-gray-600">Richiedi reset password per le casse riservate</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowHiddenPasswordReset(true)}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Reset Password
+                  </button>
+                </div>
+
                 <p className="text-xs text-gray-600">
                   Le casse riservate sono completamente invisibili agli operatori normali.
                   Solo gli amministratori possono accedervi con la password corretta.
@@ -216,101 +148,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             )}
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div>
-              <h4 className="text-md font-medium text-gray-900 mb-4">Password Casse Riservate</h4>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="hiddenPassword" className="block text-sm font-medium text-gray-700">
-                    Password Attuale *
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      {...register('hiddenPassword', { required: 'Password attuale richiesta' })}
-                      type={showPassword ? 'text' : 'password'}
-                      className="input pr-10"
-                      placeholder="Inserisci password attuale"
-                    />
-                    <button
-                      type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5 text-gray-400" />
-                      ) : (
-                        <Eye className="h-5 w-5 text-gray-400" />
-                      )}
-                    </button>
-                  </div>
-                  {errors.hiddenPassword && (
-                    <p className="mt-1 text-sm text-red-600">{errors.hiddenPassword.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="newHiddenPassword" className="block text-sm font-medium text-gray-700">
-                    Nuova Password
-                  </label>
-                  <input
-                    {...register('newHiddenPassword', {
-                      minLength: { value: 6, message: 'Password deve essere di almeno 6 caratteri' }
-                    })}
-                    type="password"
-                    className="input mt-1"
-                    placeholder="Inserisci nuova password (opzionale)"
-                  />
-                  {errors.newHiddenPassword && (
-                    <p className="mt-1 text-sm text-red-600">{errors.newHiddenPassword.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="confirmHiddenPassword" className="block text-sm font-medium text-gray-700">
-                    Conferma Nuova Password
-                  </label>
-                  <input
-                    {...register('confirmHiddenPassword', {
-                      validate: value => 
-                        !newPassword || value === newPassword || 'Le password non coincidono'
-                    })}
-                    type="password"
-                    className="input mt-1"
-                    placeholder="Conferma nuova password"
-                  />
-                  {errors.confirmHiddenPassword && (
-                    <p className="mt-1 text-sm text-red-600">{errors.confirmHiddenPassword.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-outline"
-                disabled={isLoading}
-              >
-                Annulla
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Salvataggio...' : 'Salva Impostazioni'}
-              </button>
-            </div>
-          </form>
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h5 className="text-sm font-medium text-gray-900 mb-2">Informazioni</h5>
             <ul className="text-xs text-gray-600 space-y-1">
-              <li>• La password casse nascoste è necessaria per accedere alle casse riservate</li>
-              <li>• Solo gli amministratori possono modificare queste impostazioni</li>
-              <li>• La password di default è "admin123" (cambiala per sicurezza)</li>
+              <li>• La password casse nascoste è impostata durante il setup iniziale</li>
+              <li>• Solo gli amministratori possono modificare la password delle casse nascoste</li>
+              <li>• Gli operatori possono resettare la propria password dal login</li>
               <li>• Le modifiche sono immediate e non richiedono riavvio</li>
             </ul>
           </div>
@@ -369,6 +213,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Hidden Password Reset Modal */}
+      {showHiddenPasswordReset && (
+        <HiddenPasswordResetModal onClose={() => setShowHiddenPasswordReset(false)} />
       )}
 
     </div>

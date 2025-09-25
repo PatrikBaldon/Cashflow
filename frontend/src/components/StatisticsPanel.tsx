@@ -1,10 +1,13 @@
 import React from 'react'
-import { TrendingUp, Calendar, Clock } from 'lucide-react'
+import { TrendingUp, Calendar, Clock, Building2 } from 'lucide-react'
 import { useCashStore } from '../stores/cashStore'
 import { formatCurrency } from '../utils/format'
 
 const StatisticsPanel: React.FC = () => {
   const { statistics, selectedCashRegister } = useCashStore()
+  
+  // Debug log per vedere le statistiche
+  console.log('StatisticsPanel - statistics:', statistics)
 
   if (!selectedCashRegister) {
     return (
@@ -56,6 +59,54 @@ const StatisticsPanel: React.FC = () => {
             </div>
             <p className="text-lg font-bold text-purple-900">
               {formatCurrency(statistics.monthly)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistiche Totali (Tutte le Casse) */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+          <Building2 className="h-5 w-5 text-indigo-600 mr-2" />
+          Statistiche Totali
+        </h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+            <div className="flex items-center">
+              <Calendar className="h-5 w-5 text-indigo-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-indigo-900">Oggi (Tutte le Casse)</p>
+                <p className="text-xs text-indigo-600">Incasso giornaliero totale</p>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-indigo-900">
+              {formatCurrency(statistics.totalDaily || 0)}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+            <div className="flex items-center">
+              <TrendingUp className="h-5 w-5 text-emerald-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-emerald-900">Questa Settimana (Tutte le Casse)</p>
+                <p className="text-xs text-emerald-600">Incasso settimanale totale</p>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-emerald-900">
+              {formatCurrency(statistics.totalWeekly || 0)}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-rose-50 rounded-lg">
+            <div className="flex items-center">
+              <Clock className="h-5 w-5 text-rose-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-rose-900">Questo Mese (Tutte le Casse)</p>
+                <p className="text-xs text-rose-600">Incasso mensile totale</p>
+              </div>
+            </div>
+            <p className="text-lg font-bold text-rose-900">
+              {formatCurrency(statistics.totalMonthly || 0)}
             </p>
           </div>
         </div>

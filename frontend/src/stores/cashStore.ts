@@ -26,6 +26,9 @@ interface Statistics {
   daily: number
   weekly: number
   monthly: number
+  totalDaily: number
+  totalWeekly: number
+  totalMonthly: number
 }
 
 interface CashState {
@@ -40,6 +43,8 @@ interface CashState {
   selectCashRegister: (register: CashRegister | null) => void
   loadPayments: (cashRegisterId: number) => Promise<void>
   loadStatistics: (cashRegisterId: number) => Promise<void>
+  loadTotalStatistics: () => Promise<void>
+  updateTotalStatisticsFromEvent: (data: { totalDaily: number; totalWeekly: number; totalMonthly: number }) => void
   createPayment: (payment: Omit<Payment, 'id' | 'operator_name' | 'created_at' | 'updated_at'>, operatorId: number) => Promise<boolean>
   updatePayment: (id: number, updates: Partial<Payment>) => Promise<boolean>
   deletePayment: (id: number) => Promise<boolean>
@@ -50,7 +55,7 @@ export const useCashStore = create<CashState>((set, get) => ({
   cashRegisters: [],
   selectedCashRegister: null,
   payments: [],
-  statistics: { daily: 0, weekly: 0, monthly: 0 },
+  statistics: { daily: 0, weekly: 0, monthly: 0, totalDaily: 0, totalWeekly: 0, totalMonthly: 0 },
   isLoading: false,
 
   loadCashRegisters: async (includeHidden = false) => {
@@ -75,6 +80,7 @@ export const useCashStore = create<CashState>((set, get) => ({
             // Carica anche i pagamenti e le statistiche per la cassa selezionata
             get().loadPayments(result.data[0].id)
             get().loadStatistics(result.data[0].id)
+            get().loadTotalStatistics()
           } else {
             // Se c'è già una cassa selezionata, verifica che esista ancora
             const selectedStillExists = result.data.find(cash => cash.id === selectedCashRegister.id)
@@ -103,8 +109,9 @@ export const useCashStore = create<CashState>((set, get) => ({
     if (register) {
       get().loadPayments(register.id)
       get().loadStatistics(register.id)
+      get().loadTotalStatistics()
     } else {
-      set({ payments: [], statistics: { daily: 0, weekly: 0, monthly: 0 } })
+      set({ payments: [], statistics: { daily: 0, weekly: 0, monthly: 0, totalDaily: 0, totalWeekly: 0, totalMonthly: 0 } })
     }
   },
 
@@ -135,8 +142,10 @@ export const useCashStore = create<CashState>((set, get) => ({
       ])
 
       if (dailyResult.success && weeklyResult.success && monthlyResult.success) {
+        const { statistics } = get()
         set({
           statistics: {
+            ...statistics,
             daily: dailyResult.data?.total || 0,
             weekly: weeklyResult.data?.total || 0,
             monthly: monthlyResult.data?.total || 0
@@ -146,6 +155,48 @@ export const useCashStore = create<CashState>((set, get) => ({
     } catch (error) {
       console.error('Errore caricamento statistiche:', error)
     }
+  },
+
+  loadTotalStatistics: async () => {
+    try {
+      console.log('Caricamento statistiche totali...')
+      const [dailyResult, weeklyResult, monthlyResult] = await Promise.all([
+        window.electronAPI.stats.totalDaily(),
+        window.electronAPI.stats.totalWeekly(),
+        window.electronAPI.stats.totalMonthly()
+      ])
+
+      console.log('Risultati statistiche totali:', { dailyResult, weeklyResult, monthlyResult })
+
+      if (dailyResult.success && weeklyResult.success && monthlyResult.success) {
+        const { statistics } = get()
+        const newStats = {
+          ...statistics,
+          totalDaily: dailyResult.data?.total || 0,
+          totalWeekly: weeklyResult.data?.total || 0,
+          totalMonthly: monthlyResult.data?.total || 0
+        }
+        console.log('Aggiornamento statistiche con totali:', newStats)
+        set({ statistics: newStats })
+      } else {
+        console.error('Errore nelle statistiche totali:', { dailyResult, weeklyResult, monthlyResult })
+      }
+    } catch (error) {
+      console.error('Errore caricamento statistiche totali:', error)
+    }
+  },
+
+  // Metodo per aggiornare le statistiche totali quando riceve un evento
+  updateTotalStatisticsFromEvent: (data: { totalDaily: number; totalWeekly: number; totalMonthly: number }) => {
+    const { statistics } = get()
+    const newStats = {
+      ...statistics,
+      totalDaily: data.totalDaily,
+      totalWeekly: data.totalWeekly,
+      totalMonthly: data.totalMonthly
+    }
+    console.log('Aggiornamento statistiche totali da evento:', newStats)
+    set({ statistics: newStats })
   },
 
   createPayment: async (payment: Omit<Payment, 'id' | 'operator_name' | 'created_at' | 'updated_at'>, operatorId: number) => {

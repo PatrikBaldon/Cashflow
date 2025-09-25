@@ -24,19 +24,29 @@ class CashService {
         console.log('CashService: AuthManager available:', !!this.authManager);
         console.log('CashService: Has hidden access:', this.authManager?.hasHiddenCashAccess());
         
+        // Ottieni l'utente corrente per determinare l'azienda
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
         // Se includeHidden è true, verifica che l'utente abbia accesso alle casse nascoste
         if (includeHidden) {
           // Verifica se l'utente corrente ha accesso alle casse nascoste
           if (!this.authManager || !this.authManager.hasHiddenCashAccess()) {
             console.log('CashService: No hidden access, returning public registers only');
             // Non restituire errore, restituisci solo le casse pubbliche
-            const registers = await this.db.getCashRegisters(false);
+            const registers = await this.db.getCashRegisters(currentUser.companyId, false);
             return { success: true, data: registers };
           }
         }
         
-        const registers = await this.db.getCashRegisters(includeHidden);
+        const registers = await this.db.getCashRegisters(currentUser.companyId, includeHidden);
         console.log('CashService: Returning registers:', registers.length, 'registers');
+        
+        // Aggiorna le statistiche totali quando cambia lo stato delle casse nascoste
+        this.updateTotalStatistics();
+        
         return { success: true, data: registers };
       } catch (error) {
         console.error('Errore recupero casse:', error);
@@ -44,15 +54,21 @@ class CashService {
       }
     });
 
-    ipcMain.handle('cash-create-register', async (event, { name, isHidden = false, hiddenPassword = null, description = '', createdBy = 1 }) => {
+    ipcMain.handle('cash-create-register', async (event, { name, isHidden = false, description = '' }) => {
       try {
+        // Ottieni l'utente corrente
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
         // Se è una cassa nascosta, verifica che l'utente abbia accesso
         if (isHidden && (!this.authManager || !this.authManager.hasHiddenCashAccess())) {
           // Non permettere la creazione di casse nascoste senza accesso
           return { success: false, message: 'Accesso alle casse nascoste non autorizzato' };
         }
         
-        const register = await this.db.createCashRegister(name, isHidden, hiddenPassword, description, createdBy);
+        const register = await this.db.createCashRegister(currentUser.companyId, name, isHidden, description, currentUser.id);
         return { success: true, data: register };
       } catch (error) {
         console.error('Errore creazione cassa:', error);
@@ -162,6 +178,65 @@ class CashService {
       }
     });
 
+    // Statistiche totali (tutte le casse)
+    ipcMain.handle('stats-total-daily', async (event, { date = null } = {}) => {
+      try {
+        console.log('CashService: stats-total-daily chiamato');
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          console.log('CashService: Utente non autenticato per stats-total-daily');
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
+        // Controlla se l'utente ha effettivamente sbloccato le casse nascoste
+        const hasUnlockedHidden = this.authManager?.hasUnlockedHiddenCash() || false;
+        const includeHidden = currentUser.canAccessHidden && hasUnlockedHidden;
+        console.log('CashService: Calcolando totale giornaliero per companyId:', currentUser.companyId, 'canAccessHidden:', currentUser.canAccessHidden, 'hasUnlockedHidden:', hasUnlockedHidden, 'includeHidden:', includeHidden);
+        const total = await this.db.getTotalDailyTotal(currentUser.companyId, date, includeHidden);
+        console.log('CashService: Totale giornaliero calcolato:', total);
+        return { success: true, data: { total } };
+      } catch (error) {
+        console.error('Errore calcolo totale giornaliero tutte le casse:', error);
+        return { success: false, message: 'Errore durante il calcolo del totale giornaliero' };
+      }
+    });
+
+    ipcMain.handle('stats-total-weekly', async (event, { weekStart = null } = {}) => {
+      try {
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
+        // Controlla se l'utente ha effettivamente sbloccato le casse nascoste
+        const hasUnlockedHidden = this.authManager?.hasUnlockedHiddenCash() || false;
+        const includeHidden = currentUser.canAccessHidden && hasUnlockedHidden;
+        const total = await this.db.getTotalWeeklyTotal(currentUser.companyId, weekStart, includeHidden);
+        return { success: true, data: { total } };
+      } catch (error) {
+        console.error('Errore calcolo totale settimanale tutte le casse:', error);
+        return { success: false, message: 'Errore durante il calcolo del totale settimanale' };
+      }
+    });
+
+    ipcMain.handle('stats-total-monthly', async (event, { year = null, month = null } = {}) => {
+      try {
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
+        // Controlla se l'utente ha effettivamente sbloccato le casse nascoste
+        const hasUnlockedHidden = this.authManager?.hasUnlockedHiddenCash() || false;
+        const includeHidden = currentUser.canAccessHidden && hasUnlockedHidden;
+        const total = await this.db.getTotalMonthlyTotal(currentUser.companyId, year, month, includeHidden);
+        return { success: true, data: { total } };
+      } catch (error) {
+        console.error('Errore calcolo totale mensile tutte le casse:', error);
+        return { success: false, message: 'Errore durante il calcolo del totale mensile' };
+      }
+    });
+
     // Gestione operatori
     ipcMain.handle('operators-get', async () => {
       try {
@@ -182,6 +257,40 @@ class CashService {
         return { success: false, message: 'Errore durante la creazione dell\'operatore' };
       }
     });
+  }
+
+  // Metodo per aggiornare le statistiche totali
+  async updateTotalStatistics() {
+    try {
+      const currentUser = this.authManager?.getCurrentUser();
+      if (!currentUser) {
+        return;
+      }
+
+      // Controlla se l'utente ha effettivamente sbloccato le casse nascoste
+      const hasUnlockedHidden = this.authManager?.hasUnlockedHiddenCash() || false;
+      const includeHidden = currentUser.canAccessHidden && hasUnlockedHidden;
+
+      // Calcola le nuove statistiche totali
+      const [dailyTotal, weeklyTotal, monthlyTotal] = await Promise.all([
+        this.db.getTotalDailyTotal(currentUser.companyId, null, includeHidden),
+        this.db.getTotalWeeklyTotal(currentUser.companyId, null, includeHidden),
+        this.db.getTotalMonthlyTotal(currentUser.companyId, null, null, includeHidden)
+      ]);
+
+      // Emetti un evento per notificare il frontend dell'aggiornamento
+      const { BrowserWindow } = require('electron');
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('total-statistics-updated', {
+          totalDaily: dailyTotal,
+          totalWeekly: weeklyTotal,
+          totalMonthly: monthlyTotal
+        });
+      }
+    } catch (error) {
+      console.error('Errore aggiornamento statistiche totali:', error);
+    }
   }
 
   close() {

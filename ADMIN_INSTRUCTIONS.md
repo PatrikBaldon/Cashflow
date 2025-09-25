@@ -39,9 +39,10 @@
 3. **Blocca Accesso**: Le casse riservate si nascondono automaticamente al logout
 
 ### Password Casse Riservate
-- **Default**: `admin123`
-- **Cambio**: Vai in "Impostazioni" → "Password Casse Riservate"
-- **Sicurezza**: Cambia la password di default!
+- **Impostazione**: Durante il setup iniziale dell'azienda
+- **Cambio**: Solo amministratori possono modificarla tramite API
+- **Memorizzazione**: Salvata nel database nella tabella `settings`
+- **Sicurezza**: Password personalizzata per ogni azienda
 
 ### ⚠️ IMPORTANTE
 - **Nessun operatore normale può vedere** le casse riservate

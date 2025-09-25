@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
@@ -13,45 +13,28 @@ class DatabaseManager {
 
   // Inizializza il database
   async initialize() {
-    return new Promise((resolve, reject) => {
-      try {
-        this.db = new sqlite3.Database(this.dbPath, (err) => {
-          if (err) {
-            console.error('Errore apertura database:', err);
-            reject(err);
-          } else {
-            console.log('Database connesso con successo');
-            this.createTables().then(resolve).catch(reject);
-          }
-        });
-      } catch (err) {
-        console.error('Errore apertura database:', err);
-        reject(err);
-      }
-    });
+    try {
+      this.db = new Database(this.dbPath);
+      console.log('Database connesso con successo');
+      await this.createTables();
+    } catch (err) {
+      console.error('Errore apertura database:', err);
+      throw err;
+    }
   }
 
   // Crea le tabelle se non esistono
   async createTables() {
-    return new Promise((resolve, reject) => {
-      try {
-        const schemaPath = path.join(__dirname, 'schema.sql');
-        const schema = fs.readFileSync(schemaPath, 'utf8');
-        
-        this.db.exec(schema, (err) => {
-          if (err) {
-            console.error('Errore creazione tabelle:', err);
-            reject(err);
-          } else {
-            console.log('Tabelle create/verificate con successo');
-            resolve();
-          }
-        });
-      } catch (err) {
-        console.error('Errore creazione tabelle:', err);
-        reject(err);
-      }
-    });
+    try {
+      const schemaPath = path.join(__dirname, 'schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      
+      this.db.exec(schema);
+      console.log('Tabelle create/verificate con successo');
+    } catch (err) {
+      console.error('Errore creazione tabelle:', err);
+      throw err;
+    }
   }
 
   // Gestisce la chiave di crittografia
@@ -376,70 +359,61 @@ class DatabaseManager {
   
   // Autentica un operatore
   async authenticateOperator(name, password) {
-    return new Promise((resolve, reject) => {
-      try {
-        this.db.get('SELECT * FROM operators WHERE name = ?', [name], async (err, operator) => {
-          if (err) {
-            console.error('Errore autenticazione operatore:', err);
-            reject(err);
-            return;
-          }
-          
-          if (!operator) {
-            resolve(null);
-            return;
-          }
-
-          try {
-            const isValid = await bcrypt.compare(password, operator.password_hash);
-            if (!isValid) {
-              resolve(null);
-              return;
-            }
-
-            // Aggiorna ultimo accesso
-            this.db.run('UPDATE operators SET last_login = datetime(\'now\') WHERE id = ?', [operator.id], (updateErr) => {
-              if (updateErr) {
-                console.error('Errore aggiornamento ultimo accesso:', updateErr);
-              }
-              
-              resolve({
-                id: operator.id,
-                name: operator.name,
-                isAdmin: operator.is_admin,
-                createdAt: operator.created_at,
-                lastLogin: operator.last_login
-              });
-            });
-          } catch (bcryptErr) {
-            console.error('Errore bcrypt:', bcryptErr);
-            reject(bcryptErr);
-          }
-        });
-      } catch (err) {
-        console.error('Errore autenticazione operatore:', err);
-        reject(err);
+    try {
+      const stmt = this.db.prepare(`
+        SELECT o.*, cp.company_name, cp.vat_number
+        FROM operators o
+        JOIN company_profiles cp ON o.company_id = cp.id
+        WHERE o.name = ?
+      `);
+      const operator = stmt.get(name);
+      
+      if (!operator) {
+        return null;
       }
-    });
+
+      const isValid = await bcrypt.compare(password, operator.password_hash);
+      if (!isValid) {
+        return null;
+      }
+
+      // Aggiorna ultimo accesso
+      const updateStmt = this.db.prepare('UPDATE operators SET last_login = datetime(\'now\') WHERE id = ?');
+      updateStmt.run(operator.id);
+
+      return {
+        id: operator.id,
+        companyId: operator.company_id,
+        name: operator.name,
+        isAdmin: operator.is_admin,
+        canAccessHidden: operator.can_access_hidden,
+        companyName: operator.company_name,
+        vatNumber: operator.vat_number,
+        password: operator.password_hash,
+        createdAt: operator.created_at,
+        lastLogin: operator.last_login
+      };
+    } catch (err) {
+      console.error('Errore autenticazione operatore:', err);
+      throw err;
+    }
   }
 
-  // Ottiene tutti gli operatori
-  async getOperators() {
-    return new Promise((resolve, reject) => {
-      try {
-        this.db.all('SELECT id, name, is_admin, created_at, last_login FROM operators ORDER BY created_at DESC', (err, rows) => {
-          if (err) {
-            console.error('Errore recupero operatori:', err);
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        });
-      } catch (err) {
-        console.error('Errore recupero operatori:', err);
-        reject(err);
-      }
-    });
+  // Ottiene tutti gli operatori per l'azienda corrente
+  async getOperators(companyId) {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT id, name, is_admin, can_access_hidden, created_at, last_login 
+        FROM operators 
+        WHERE company_id = ? 
+        ORDER BY created_at DESC
+      `);
+      const operators = stmt.all(companyId);
+      return operators;
+    } catch (err) {
+      console.error('Errore recupero operatori:', err);
+      throw err;
+    }
   }
 
   // Ottiene un operatore per ID
@@ -455,15 +429,15 @@ class DatabaseManager {
   }
 
   // Crea un nuovo operatore
-  async createOperator(name, password, isAdmin = false) {
+  async createOperator(companyId, name, password, isAdmin = false, canAccessHidden = false) {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const stmt = this.db.prepare(`
-        INSERT INTO operators (name, password_hash, is_admin, created_at)
-        VALUES (?, ?, ?, datetime('now'))
+        INSERT INTO operators (company_id, name, password_hash, is_admin, can_access_hidden, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
       `);
       
-      const result = stmt.run(name, hashedPassword, isAdmin);
+      const result = stmt.run(companyId, name, hashedPassword, isAdmin, canAccessHidden);
       return { success: true, operatorId: result.lastInsertRowid };
     } catch (err) {
       console.error('Errore creazione operatore:', err);
@@ -489,6 +463,10 @@ class DatabaseManager {
       if (updates.isAdmin !== undefined) {
         fields.push('is_admin = ?');
         values.push(updates.isAdmin);
+      }
+      if (updates.canAccessHidden !== undefined) {
+        fields.push('can_access_hidden = ?');
+        values.push(updates.canAccessHidden);
       }
 
       if (fields.length === 0) {
@@ -520,14 +498,14 @@ class DatabaseManager {
 
   // ===== METODI PER CASSE =====
 
-  // Ottiene tutte le casse
-  async getCashRegisters(includeHidden = false) {
+  // Ottiene tutte le casse per l'azienda
+  async getCashRegisters(companyId, includeHidden = false) {
     try {
-      let query = 'SELECT * FROM cash_registers';
-      const params = [];
+      let query = 'SELECT * FROM cash_registers WHERE company_id = ?';
+      const params = [companyId];
       
       if (!includeHidden) {
-        query += ' WHERE is_hidden = FALSE';
+        query += ' AND is_hidden = FALSE';
       }
       
       query += ' ORDER BY created_at DESC';
@@ -554,14 +532,14 @@ class DatabaseManager {
   }
 
   // Crea una nuova cassa
-  async createCashRegister(name, isHidden = false, hiddenPassword = null, description = '', createdBy = 1) {
+  async createCashRegister(companyId, name, isHidden = false, description = '', createdBy = 1) {
     try {
       const stmt = this.db.prepare(`
-        INSERT INTO cash_registers (name, is_hidden, hidden_password, description, created_by, created_at)
+        INSERT INTO cash_registers (company_id, name, is_hidden, description, created_by, created_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
       `);
       
-      const result = stmt.run(name, isHidden, hiddenPassword, description, createdBy);
+      const result = stmt.run(companyId, name, isHidden, description, createdBy);
       return { success: true, registerId: result.lastInsertRowid };
     } catch (err) {
       console.error('Errore creazione cassa:', err);
@@ -582,10 +560,6 @@ class DatabaseManager {
       if (updates.isHidden !== undefined) {
         fields.push('is_hidden = ?');
         values.push(updates.isHidden);
-      }
-      if (updates.hiddenPassword !== undefined) {
-        fields.push('hidden_password = ?');
-        values.push(updates.hiddenPassword);
       }
       if (updates.description !== undefined) {
         fields.push('description = ?');
@@ -797,6 +771,86 @@ class DatabaseManager {
     }
   }
 
+  // ===== METODI PER STATISTICHE TOTALI (TUTTE LE CASSE) =====
+
+  // Ottiene il totale giornaliero per tutte le casse dell'azienda
+  async getTotalDailyTotal(companyId, date = null, includeHidden = false) {
+    try {
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      let query = `
+        SELECT SUM(p.amount) as total
+        FROM payments p
+        INNER JOIN cash_registers cr ON p.cash_register_id = cr.id
+        WHERE cr.company_id = ? AND p.payment_date = ?
+      `;
+      
+      if (!includeHidden) {
+        query += ' AND cr.is_hidden = FALSE';
+      }
+      
+      const stmt = this.db.prepare(query);
+      const result = stmt.get(companyId, targetDate);
+      return result.total || 0;
+    } catch (err) {
+      console.error('Errore calcolo totale giornaliero tutte le casse:', err);
+      throw err;
+    }
+  }
+
+  // Ottiene il totale settimanale per tutte le casse dell'azienda
+  async getTotalWeeklyTotal(companyId, weekStart = null, includeHidden = false) {
+    try {
+      const startDate = weekStart || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+      let query = `
+        SELECT SUM(p.amount) as total
+        FROM payments p
+        INNER JOIN cash_registers cr ON p.cash_register_id = cr.id
+        WHERE cr.company_id = ? AND p.payment_date BETWEEN ? AND ?
+      `;
+      
+      if (!includeHidden) {
+        query += ' AND cr.is_hidden = FALSE';
+      }
+      
+      const stmt = this.db.prepare(query);
+      const result = stmt.get(companyId, startDate, endDate);
+      return result.total || 0;
+    } catch (err) {
+      console.error('Errore calcolo totale settimanale tutte le casse:', err);
+      throw err;
+    }
+  }
+
+  // Ottiene il totale mensile per tutte le casse dell'azienda
+  async getTotalMonthlyTotal(companyId, year = null, month = null, includeHidden = false) {
+    try {
+      const now = new Date();
+      const targetYear = year || now.getFullYear();
+      const targetMonth = month || now.getMonth() + 1;
+      
+      let query = `
+        SELECT SUM(p.amount) as total
+        FROM payments p
+        INNER JOIN cash_registers cr ON p.cash_register_id = cr.id
+        WHERE cr.company_id = ? 
+        AND strftime('%Y', p.payment_date) = ? 
+        AND strftime('%m', p.payment_date) = ?
+      `;
+      
+      if (!includeHidden) {
+        query += ' AND cr.is_hidden = FALSE';
+      }
+      
+      const stmt = this.db.prepare(query);
+      const result = stmt.get(companyId, targetYear.toString(), targetMonth.toString().padStart(2, '0'));
+      return result.total || 0;
+    } catch (err) {
+      console.error('Errore calcolo totale mensile tutte le casse:', err);
+      throw err;
+    }
+  }
+
   // ===== METODI PER IMPOSTAZIONI =====
 
   // Ottiene tutte le impostazioni
@@ -826,16 +880,261 @@ class DatabaseManager {
     }
   }
 
+  // ===== METODI PER PROFILI AZIENDALI =====
+
+  // Verifica se il setup è stato completato
+  async isSetupCompleted() {
+    try {
+      const stmt = this.db.prepare('SELECT value FROM settings WHERE key = ?');
+      const result = stmt.get('setup_completed');
+      return result?.value === 'true';
+    } catch (err) {
+      console.error('Errore verifica setup:', err);
+      return false;
+    }
+  }
+
+  // Crea un profilo aziendale
+  async createCompanyProfile(companyName, vatNumber, email, hiddenCashPassword) {
+    try {
+      // Genera un codice di sicurezza univoco
+      const securityCode = this.generateSecurityCode();
+      
+      const stmt = this.db.prepare(`
+        INSERT INTO company_profiles (company_name, vat_number, email, security_code, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `);
+      
+      const result = stmt.run(companyName, vatNumber, email, securityCode);
+      
+      // Salva la password delle casse nascoste
+      await this.updateSetting('hidden_cash_password', hiddenCashPassword);
+      
+      // Marca il setup come completato
+      await this.updateSetting('setup_completed', 'true');
+      
+      return { success: true, companyId: result.lastInsertRowid, securityCode };
+    } catch (err) {
+      console.error('Errore creazione profilo aziendale:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Ottiene il profilo aziendale
+  async getCompanyProfile() {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM company_profiles LIMIT 1');
+      const profile = stmt.get();
+      return profile;
+    } catch (err) {
+      console.error('Errore recupero profilo aziendale:', err);
+      return null;
+    }
+  }
+
+  // Verifica P.IVA e codice di sicurezza
+  async verifyCompanyCredentials(vatNumber, securityCode) {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM company_profiles WHERE vat_number = ? AND security_code = ?');
+      const profile = stmt.get(vatNumber, securityCode);
+      return profile;
+    } catch (err) {
+      console.error('Errore verifica credenziali aziendali:', err);
+      return null;
+    }
+  }
+
+  // Verifica email e codice di sicurezza
+  async verifyCompanyCredentialsByEmail(email, securityCode) {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM company_profiles WHERE email = ? AND security_code = ?');
+      const profile = stmt.get(email, securityCode);
+      return profile;
+    } catch (err) {
+      console.error('Errore verifica credenziali aziendali per email:', err);
+      return null;
+    }
+  }
+
+  // Ottieni operatore admin per azienda
+  async getAdminOperatorByCompany(companyId) {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM operators WHERE company_id = ? AND is_admin = 1 LIMIT 1');
+      const operator = stmt.get(companyId);
+      return operator;
+    } catch (err) {
+      console.error('Errore recupero operatore admin:', err);
+      return null;
+    }
+  }
+
+  // Genera un codice di sicurezza
+  generateSecurityCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  // Crea token reset password casse nascoste
+  async createHiddenPasswordResetToken(companyId, operatorId) {
+    try {
+      const token = this.generateSecurityCode() + this.generateSecurityCode(); // 16 caratteri
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 ora
+
+      const stmt = this.db.prepare(`
+        INSERT INTO password_reset_tokens (company_id, operator_id, token, token_type, expires_at, created_at)
+        VALUES (?, ?, ?, 'hidden_password', ?, datetime('now'))
+      `);
+      
+      stmt.run(companyId, operatorId, token, expiresAt.toISOString());
+      
+      return { success: true, token, expiresAt: expiresAt.toISOString() };
+    } catch (err) {
+      console.error('Errore creazione token reset casse nascoste:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Verifica token reset password casse nascoste
+  async verifyHiddenPasswordResetToken(token) {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT prt.*, o.name as operator_name, cp.company_name
+        FROM password_reset_tokens prt
+        JOIN operators o ON prt.operator_id = o.id
+        JOIN company_profiles cp ON prt.company_id = cp.id
+        WHERE prt.token = ? AND prt.token_type = 'hidden_password' AND prt.expires_at > datetime('now')
+      `);
+      
+      const tokenData = stmt.get(token);
+      return tokenData;
+    } catch (err) {
+      console.error('Errore verifica token reset casse nascoste:', err);
+      return null;
+    }
+  }
+
+  // Elimina token reset password casse nascoste
+  async deleteHiddenPasswordResetToken(token) {
+    try {
+      const stmt = this.db.prepare('DELETE FROM password_reset_tokens WHERE token = ? AND token_type = ?');
+      stmt.run(token, 'hidden_password');
+      return { success: true };
+    } catch (err) {
+      console.error('Errore eliminazione token reset casse nascoste:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // ===== METODI PER PASSWORD RESET =====
+
+  // Crea un token di reset password
+  async createPasswordResetToken(companyId, operatorId) {
+    try {
+      // Pulisce i token esistenti per questo operatore
+      const deleteStmt = this.db.prepare('DELETE FROM password_reset_tokens WHERE operator_id = ?');
+      deleteStmt.run(operatorId);
+
+      // Genera un token sicuro
+      const token = require('crypto').randomBytes(32).toString('hex');
+      
+      // Token valido per 1 ora
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+      const stmt = this.db.prepare(`
+        INSERT INTO password_reset_tokens (company_id, operator_id, token, expires_at, created_at)
+        VALUES (?, ?, ?, ?, datetime('now'))
+      `);
+      
+      const result = stmt.run(companyId, operatorId, token, expiresAt);
+      return { success: true, token, expiresAt };
+    } catch (err) {
+      console.error('Errore creazione token reset password:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Verifica un token di reset password
+  async verifyPasswordResetToken(token) {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT prt.*, o.name as operator_name, o.is_admin
+        FROM password_reset_tokens prt
+        JOIN operators o ON prt.operator_id = o.id
+        WHERE prt.token = ? AND prt.used = FALSE AND prt.expires_at > datetime('now')
+      `);
+      
+      const result = stmt.get(token);
+      return result;
+    } catch (err) {
+      console.error('Errore verifica token reset password:', err);
+      return null;
+    }
+  }
+
+  // Usa un token di reset password e aggiorna la password
+  async usePasswordResetToken(token, newPassword) {
+    try {
+      const tokenData = await this.verifyPasswordResetToken(token);
+      if (!tokenData) {
+        return { success: false, error: 'Token non valido o scaduto' };
+      }
+
+      // Hash della nuova password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Aggiorna la password dell'operatore
+      const updateStmt = this.db.prepare('UPDATE operators SET password_hash = ? WHERE id = ?');
+      updateStmt.run(hashedPassword, tokenData.operator_id);
+
+      // Marca il token come usato
+      const markUsedStmt = this.db.prepare('UPDATE password_reset_tokens SET used = TRUE WHERE id = ?');
+      markUsedStmt.run(tokenData.id);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Errore uso token reset password:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Pulisce i token scaduti
+  async cleanupExpiredTokens() {
+    try {
+      const stmt = this.db.prepare('DELETE FROM password_reset_tokens WHERE expires_at < datetime("now")');
+      const result = stmt.run();
+      return { success: true, deletedCount: result.changes };
+    } catch (err) {
+      console.error('Errore pulizia token scaduti:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Ottiene un operatore per nome e azienda (per il reset password)
+  async getOperatorByNameAndCompany(name, companyId) {
+    try {
+      const stmt = this.db.prepare(`
+        SELECT o.id, o.name, o.is_admin, o.can_access_hidden, o.created_at, cp.company_name
+        FROM operators o
+        JOIN company_profiles cp ON o.company_id = cp.id
+        WHERE o.name = ? AND o.company_id = ?
+      `);
+      const operator = stmt.get(name, companyId);
+      return operator;
+    } catch (err) {
+      console.error('Errore recupero operatore per nome e azienda:', err);
+      return null;
+    }
+  }
+
   // Chiude la connessione al database
   close() {
     if (this.db) {
-      this.db.close((err) => {
-        if (err) {
-          console.error('Errore chiusura database:', err);
-        } else {
-          console.log('Database chiuso');
-        }
-      });
+      this.db.close();
+      console.log('Database chiuso');
     }
   }
 }

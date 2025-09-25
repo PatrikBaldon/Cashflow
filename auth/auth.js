@@ -45,25 +45,25 @@ class AuthManager {
       return this.currentUser;
     });
 
-    // Accesso casse nascoste (solo per admin)
+    // Accesso casse nascoste (basato su permessi utente)
     ipcMain.handle('auth-unlock-hidden-cash', async (event, password) => {
       try {
         console.log('AuthManager: Unlock attempt with password:', password);
         console.log('AuthManager: Current user:', this.currentUser);
-        console.log('AuthManager: Is admin:', this.currentUser?.isAdmin);
+        console.log('AuthManager: Can access hidden:', this.currentUser?.canAccessHidden);
         
-        // Solo gli admin possono accedere alle casse nascoste
-        if (!this.currentUser?.isAdmin) {
-          console.log('AuthManager: User is not admin');
-          return { success: false, message: 'Solo gli amministratori possono accedere alle casse nascoste' };
+        // Verifica se l'utente può accedere alle casse nascoste
+        if (!this.currentUser?.canAccessHidden) {
+          console.log('AuthManager: User cannot access hidden cash');
+          return { success: false, message: 'Non hai i permessi per accedere alle casse nascoste' };
         }
 
-        // Verifica password per casse nascoste
+        // Leggi la password delle casse nascoste dal database
         const settings = await this.db.getSettings();
-        const defaultPassword = settings.find(s => s.key === 'default_hidden_password')?.value || 'admin123';
-        console.log('AuthManager: Default password from settings:', defaultPassword);
+        const hiddenPasswordSetting = settings.find(s => s.key === 'hidden_cash_password');
+        const hiddenPassword = hiddenPasswordSetting ? hiddenPasswordSetting.value : 'admin123';
         
-        if (password === defaultPassword) {
+        if (password === hiddenPassword) {
           this.hiddenCashPassword = password;
           console.log('AuthManager: Password correct, access granted');
           return { success: true };
@@ -87,6 +87,175 @@ class AuthManager {
     ipcMain.handle('auth-check-hidden-access', () => {
       return !!this.hiddenCashPassword;
     });
+
+    // Richiesta reset password con P.IVA/email e codice di sicurezza
+    ipcMain.handle('auth-request-password-reset', async (event, { vatNumber, email, securityCode, operatorName }) => {
+      try {
+        // Verifica credenziali aziendali
+        let company;
+        if (vatNumber) {
+          company = await this.db.verifyCompanyCredentials(vatNumber, securityCode);
+        } else if (email) {
+          company = await this.db.verifyCompanyCredentialsByEmail(email, securityCode);
+        } else {
+          return { success: false, message: 'P.IVA o email richiesta' };
+        }
+        
+        if (!company) {
+          return { success: false, message: 'P.IVA/email o codice di sicurezza non validi' };
+        }
+
+        // Verifica che l'operatore esista per questa azienda
+        const operator = await this.db.getOperatorByNameAndCompany(operatorName, company.id);
+        if (!operator) {
+          return { success: false, message: 'Operatore non trovato per questa azienda' };
+        }
+
+        // Crea il token di reset
+        const tokenResult = await this.db.createPasswordResetToken(company.id, operator.id);
+        if (!tokenResult.success) {
+          return { success: false, message: 'Errore nella creazione del token' };
+        }
+
+        // In un'applicazione reale, qui invieresti l'email
+        // Per ora, restituiamo il token per scopi di test
+        return { 
+          success: true, 
+          message: 'Token di reset creato con successo',
+          token: tokenResult.token, // Solo per scopi di test - rimuovere in produzione
+          expiresAt: tokenResult.expiresAt,
+          companyName: company.company_name
+        };
+      } catch (error) {
+        console.error('Errore richiesta reset password:', error);
+        return { success: false, message: 'Errore durante la richiesta di reset password' };
+      }
+    });
+
+    // Verifica token reset password
+    ipcMain.handle('auth-verify-reset-token', async (event, { token }) => {
+      try {
+        const tokenData = await this.db.verifyPasswordResetToken(token);
+        if (!tokenData) {
+          return { success: false, message: 'Token non valido o scaduto' };
+        }
+
+        return { 
+          success: true, 
+          operatorName: tokenData.operator_name,
+          expiresAt: tokenData.expires_at
+        };
+      } catch (error) {
+        console.error('Errore verifica token reset:', error);
+        return { success: false, message: 'Errore durante la verifica del token' };
+      }
+    });
+
+    // Reset password con token
+    ipcMain.handle('auth-reset-password', async (event, { token, newPassword }) => {
+      try {
+        const result = await this.db.usePasswordResetToken(token, newPassword);
+        if (!result.success) {
+          return { success: false, message: result.error };
+        }
+
+        return { success: true, message: 'Password aggiornata con successo' };
+      } catch (error) {
+        console.error('Errore reset password:', error);
+        return { success: false, message: 'Errore durante il reset della password' };
+      }
+    });
+
+    // Aggiorna password casse nascoste
+    ipcMain.handle('auth-update-hidden-cash-password', async (event, { newPassword }) => {
+      try {
+        // Verifica che l'utente sia admin
+        if (!this.currentUser?.isAdmin) {
+          return { success: false, message: 'Solo gli amministratori possono modificare la password delle casse nascoste' };
+        }
+
+        // Aggiorna la password nel database
+        await this.db.updateSetting('hidden_cash_password', newPassword);
+        
+        return { success: true, message: 'Password casse nascoste aggiornata con successo' };
+      } catch (error) {
+        console.error('Errore aggiornamento password casse nascoste:', error);
+        return { success: false, message: 'Errore durante l\'aggiornamento della password' };
+      }
+    });
+
+    // Richiesta reset password casse nascoste con P.IVA/email, codice di sicurezza e password utente attuale
+    ipcMain.handle('auth-request-hidden-password-reset', async (event, { vatNumber, email, securityCode, currentPassword }) => {
+      try {
+        // Verifica che l'utente sia loggato e sia amministratore
+        if (!this.currentUser) {
+          return { success: false, message: 'Devi essere loggato per richiedere il reset' };
+        }
+
+        if (!this.currentUser.canAccessHidden) {
+          return { success: false, message: 'Non hai i permessi amministratore per richiedere il reset' };
+        }
+
+        // Verifica password dell'utente attualmente loggato
+        const bcrypt = require('bcryptjs');
+        const isPasswordValid = await bcrypt.compare(currentPassword, this.currentUser.password);
+        if (!isPasswordValid) {
+          return { success: false, message: 'Password amministratore non corretta' };
+        }
+
+        // Verifica credenziali aziendali
+        let company;
+        if (vatNumber) {
+          company = await this.db.verifyCompanyCredentials(vatNumber, securityCode);
+        } else if (email) {
+          company = await this.db.verifyCompanyCredentialsByEmail(email, securityCode);
+        } else {
+          return { success: false, message: 'P.IVA o email richiesta' };
+        }
+        
+        if (!company) {
+          return { success: false, message: 'P.IVA/email o codice di sicurezza non validi' };
+        }
+
+        // Crea il token di reset per le casse nascoste
+        const tokenResult = await this.db.createHiddenPasswordResetToken(company.id, this.currentUser.id);
+        if (!tokenResult.success) {
+          return { success: false, message: 'Errore nella creazione del token' };
+        }
+
+        return { 
+          success: true, 
+          token: tokenResult.token,
+          expiresAt: tokenResult.expiresAt,
+          companyName: company.company_name
+        };
+      } catch (error) {
+        console.error('Errore richiesta reset password casse nascoste:', error);
+        return { success: false, message: 'Errore durante la richiesta di reset' };
+      }
+    });
+
+    // Reset password casse nascoste con token
+    ipcMain.handle('auth-reset-hidden-password', async (event, { token, newPassword }) => {
+      try {
+        // Verifica token
+        const tokenData = await this.db.verifyHiddenPasswordResetToken(token);
+        if (!tokenData) {
+          return { success: false, message: 'Token non valido o scaduto' };
+        }
+
+        // Aggiorna password casse nascoste
+        await this.db.updateSetting('hidden_cash_password', newPassword);
+
+        // Elimina il token usato
+        await this.db.deleteHiddenPasswordResetToken(token);
+
+        return { success: true, message: 'Password casse nascoste aggiornata con successo' };
+      } catch (error) {
+        console.error('Errore reset password casse nascoste:', error);
+        return { success: false, message: 'Errore durante il reset della password' };
+      }
+    });
   }
 
   async getSettings() {
@@ -95,6 +264,10 @@ class AuthManager {
 
   getCurrentUser() {
     return this.currentUser;
+  }
+
+  hasUnlockedHiddenCash() {
+    return this.hiddenCashPassword !== null;
   }
 
   hasHiddenCashAccess() {

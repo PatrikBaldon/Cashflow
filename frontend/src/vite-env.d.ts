@@ -9,9 +9,15 @@ declare global {
         login: (credentials: { name: string; password: string }) => Promise<{ success: boolean; user?: any; message?: string }>;
         logout: () => Promise<{ success: boolean }>;
         getCurrentUser: () => Promise<any>;
-        unlockHiddenCash: (password: string) => Promise<{ success: boolean }>;
+        unlockHiddenCash: (password: string) => Promise<{ success: boolean; message?: string }>;
         lockHiddenCash: () => Promise<{ success: boolean }>;
         checkHiddenAccess: () => Promise<boolean>;
+        requestPasswordReset: (data: { vatNumber?: string; email?: string; securityCode: string; operatorName: string }) => Promise<{ success: boolean; message?: string; token?: string; expiresAt?: string; companyName?: string }>;
+        verifyResetToken: (data: { token: string }) => Promise<{ success: boolean; message?: string; operatorName?: string; expiresAt?: string }>;
+        resetPassword: (data: { token: string; newPassword: string }) => Promise<{ success: boolean; message?: string }>;
+        updateHiddenCashPassword: (data: { newPassword: string }) => Promise<{ success: boolean; message?: string }>;
+        requestHiddenPasswordReset: (data: { vatNumber?: string; email?: string; securityCode: string; currentPassword: string }) => Promise<{ success: boolean; message?: string; token?: string; expiresAt?: string; companyName?: string }>;
+        resetHiddenPassword: (data: { token: string; newPassword: string }) => Promise<{ success: boolean; message?: string }>;
       };
       
       // Cash registers
@@ -36,6 +42,9 @@ declare global {
         daily: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
         weekly: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
         monthly: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
+        totalDaily: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
+        totalWeekly: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
+        totalMonthly: (options?: any) => Promise<{ success: boolean; data?: any; message?: string }>;
       };
       
       // Users (admin only)
@@ -51,6 +60,13 @@ declare global {
       settings: {
         get: () => Promise<{ success: boolean; data?: any; message?: string }>;
         update: (data: any) => Promise<{ success: boolean; message?: string }>;
+      };
+      
+      // Setup
+      setup: {
+        isCompleted: () => Promise<{ success: boolean; isCompleted?: boolean; message?: string }>;
+        createCompany: (data: { companyName: string; vatNumber: string; email: string; hiddenCashPassword: string }) => Promise<{ success: boolean; message?: string; securityCode?: string; companyId?: number }>;
+        getCompanyProfile: () => Promise<{ success: boolean; profile?: any; message?: string }>;
       };
       
       // Excel export
@@ -76,6 +92,10 @@ declare global {
       minimize: () => Promise<void>;
       maximize: () => Promise<void>;
       close: () => Promise<void>;
+      
+      // Event listeners
+      onTotalStatisticsUpdated: (callback: (event: any, data: { totalDaily: number; totalWeekly: number; totalMonthly: number }) => void) => void;
+      removeTotalStatisticsListener: (callback: (event: any, data: { totalDaily: number; totalWeekly: number; totalMonthly: number }) => void) => void;
     };
   }
 }

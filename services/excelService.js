@@ -4,8 +4,13 @@ const path = require('path')
 const fs = require('fs').promises
 
 class ExcelService {
-  constructor() {
+  constructor(authManager = null) {
+    this.authManager = authManager;
     this.setupIpcHandlers()
+  }
+
+  setAuthManager(authManager) {
+    this.authManager = authManager;
   }
 
   setupIpcHandlers() {
@@ -93,12 +98,18 @@ class ExcelService {
     // Export tutte le casse (incluse nascoste se sbloccate)
     ipcMain.handle('excel-export-all-cash', async (event, { includeHidden = false, filePath = null }) => {
       try {
+        // Ottieni l'utente corrente per determinare l'azienda
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
         const Database = require('../database/database')
         const db = new Database()
         await db.initialize()
         
-        // Carica tutte le casse
-        const cashRegisters = await db.getCashRegisters(includeHidden)
+        // Carica tutte le casse per l'azienda corrente
+        const cashRegisters = await db.getCashRegisters(currentUser.companyId, includeHidden)
         
         if (!cashRegisters || cashRegisters.length === 0) {
           return { success: false, message: 'Nessuna cassa trovata' }

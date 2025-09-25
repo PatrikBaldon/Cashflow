@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     unlockHiddenCash: (password) => ipcRenderer.invoke('auth-unlock-hidden-cash', password),
     lockHiddenCash: () => ipcRenderer.invoke('auth-lock-hidden-cash'),
     checkHiddenAccess: () => ipcRenderer.invoke('auth-check-hidden-access'),
+    requestPasswordReset: (data) => ipcRenderer.invoke('auth-request-password-reset', data),
+    verifyResetToken: (data) => ipcRenderer.invoke('auth-verify-reset-token', data),
+    resetPassword: (data) => ipcRenderer.invoke('auth-reset-password', data),
+        updateHiddenCashPassword: (data) => ipcRenderer.invoke('auth-update-hidden-cash-password', data),
+        requestHiddenPasswordReset: (data) => ipcRenderer.invoke('auth-request-hidden-password-reset', data),
+        resetHiddenPassword: (data) => ipcRenderer.invoke('auth-reset-hidden-password', data),
   },
   
   // Cash registers
@@ -44,11 +50,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // Statistics
-  stats: {
-    daily: (options) => ipcRenderer.invoke('stats-daily', options),
-    weekly: (options) => ipcRenderer.invoke('stats-weekly', options),
-    monthly: (options) => ipcRenderer.invoke('stats-monthly', options),
-  },
+    stats: {
+      daily: (options) => ipcRenderer.invoke('stats-daily', options),
+      weekly: (options) => ipcRenderer.invoke('stats-weekly', options),
+      monthly: (options) => ipcRenderer.invoke('stats-monthly', options),
+      totalDaily: (options) => ipcRenderer.invoke('stats-total-daily', options),
+      totalWeekly: (options) => ipcRenderer.invoke('stats-total-weekly', options),
+      totalMonthly: (options) => ipcRenderer.invoke('stats-total-monthly', options),
+    },
   
   // Users (admin only)
   users: {
@@ -63,6 +72,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   settings: {
     get: () => ipcRenderer.invoke('settings-get'),
     update: (data) => ipcRenderer.invoke('settings-update', data),
+  },
+  
+  // Setup
+  setup: {
+    isCompleted: () => ipcRenderer.invoke('setup-is-completed'),
+    createCompany: (data) => ipcRenderer.invoke('setup-create-company', data),
+    getCompanyProfile: () => ipcRenderer.invoke('setup-get-company-profile'),
   },
   
   // Excel export
@@ -88,4 +104,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.invoke('minimize-window'),
   maximize: () => ipcRenderer.invoke('maximize-window'),
   close: () => ipcRenderer.invoke('close-window'),
+  
+  // Event listeners
+  onTotalStatisticsUpdated: (callback) => ipcRenderer.on('total-statistics-updated', callback),
+  removeTotalStatisticsListener: (callback) => ipcRenderer.removeListener('total-statistics-updated', callback),
 });

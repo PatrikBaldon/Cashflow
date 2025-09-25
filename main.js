@@ -7,12 +7,14 @@ const AuthManager = require('./auth/auth');
 const CashService = require('./services/cashService');
 const UserService = require('./services/userService');
 const ExcelService = require('./services/excelService');
+const SetupService = require('./services/setupService');
 
 let mainWindow;
 let authManager;
 let cashService;
 let userService;
 let excelService;
+let setupService;
 
 function createWindow() {
   // Create the browser window
@@ -86,11 +88,13 @@ function createWindow() {
 // App event handlers
 app.whenReady().then(async () => {
   // Initialize services
+  setupService = new SetupService();
   authManager = new AuthManager();
   cashService = new CashService(authManager);
-  userService = new UserService();
-  excelService = new ExcelService();
+  userService = new UserService(authManager);
+  excelService = new ExcelService(authManager);
   
+  await setupService.initialize();
   await authManager.initialize();
   await cashService.initialize();
   await userService.initialize();
@@ -119,6 +123,7 @@ app.on('window-all-closed', () => {
 
 // Cleanup on app quit
 app.on('before-quit', () => {
+  if (setupService) setupService.close();
   if (authManager) authManager.close();
   if (cashService) cashService.close();
   if (userService) userService.close();

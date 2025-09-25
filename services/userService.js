@@ -2,8 +2,9 @@ const { ipcMain } = require('electron');
 const DatabaseManager = require('../database/database');
 
 class UserService {
-  constructor() {
+  constructor(authManager = null) {
     this.db = new DatabaseManager();
+    this.authManager = authManager;
     this.setupIpcHandlers();
   }
 
@@ -11,11 +12,21 @@ class UserService {
     await this.db.initialize();
   }
 
+  setAuthManager(authManager) {
+    this.authManager = authManager;
+  }
+
   setupIpcHandlers() {
     // Gestione utenti
     ipcMain.handle('users-get', async () => {
       try {
-        const users = await this.db.getOperators();
+        // Ottieni l'utente corrente per determinare l'azienda
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
+        const users = await this.db.getOperators(currentUser.companyId);
         return { success: true, data: users };
       } catch (error) {
         console.error('Errore recupero utenti:', error);
@@ -23,9 +34,15 @@ class UserService {
       }
     });
 
-    ipcMain.handle('users-create', async (event, { name, password, isAdmin = false }) => {
+    ipcMain.handle('users-create', async (event, { name, password, isAdmin = false, canAccessHidden = false }) => {
       try {
-        const user = await this.db.createOperator(name, password, isAdmin);
+        // Ottieni l'utente corrente per determinare l'azienda
+        const currentUser = this.authManager?.getCurrentUser();
+        if (!currentUser) {
+          return { success: false, message: 'Utente non autenticato' };
+        }
+
+        const user = await this.db.createOperator(currentUser.companyId, name, password, isAdmin, canAccessHidden);
         return { success: true, data: user };
       } catch (error) {
         console.error('Errore creazione utente:', error);

@@ -91,6 +91,18 @@ out/
 *.db
 *.sqlite
 *.sqlite3
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+
+# Data directories (user data, backups, exports)
+data/backups/*
+data/excel/*
+!data/backups/.gitkeep
+!data/excel/.gitkeep
+
+# Test files
+test-total-stats.js
 
 # OS generated files
 .DS_Store

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Lock, User, Eye, EyeOff } from 'lucide-react'
+import { Lock, User, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useCashStore } from '../stores/cashStore'
+import PasswordResetScreen from './PasswordResetScreen'
 
 interface LoginForm {
   name: string
@@ -14,6 +15,7 @@ const LoginScreen: React.FC = () => {
   const { loadCashRegisters } = useCashStore()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
 
   const {
     register: registerLogin,
@@ -33,6 +35,10 @@ const LoginScreen: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (showPasswordReset) {
+    return <PasswordResetScreen onBack={() => setShowPasswordReset(false)} />
   }
 
   return (
@@ -101,13 +107,22 @@ const LoginScreen: React.FC = () => {
               )}
             </div>
 
-            <div>
+            <div className="space-y-3">
               <button
                 type="submit"
                 disabled={isLoading}
                 className="btn btn-primary btn-lg w-full"
               >
                 {isLoading ? 'Accesso...' : 'Accedi'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowPasswordReset(true)}
+                className="btn btn-outline w-full flex items-center justify-center"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Reset Password
               </button>
             </div>
           </form>
