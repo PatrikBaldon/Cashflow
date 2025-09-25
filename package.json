@@ -23,6 +23,7 @@
     "lint:frontend": "cd frontend && npm run lint",
     "clean": "rimraf dist frontend/dist",
     "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
     "setup:github": "./scripts/setup-github.sh",
     "release": "./scripts/create-release.sh"
   },
@@ -43,6 +44,7 @@
     "electron": "^27.1.3",
     "electron-builder": "^24.6.4",
     "electron-icon-builder": "^2.0.1",
+    "electron-rebuild": "^3.2.9",
     "rimraf": "^5.0.5",
     "sharp": "^0.34.4",
     "wait-on": "^7.2.0"
@@ -80,16 +82,9 @@
       "!node_modules/**/yarn.lock",
       "!node_modules/**/pnpm-lock.yaml"
     ],
-    "mac": {
-      "category": "public.app-category.business",
-      "target": "dmg",
-      "icon": "assets/icon.icns"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png",
-      "category": "Office"
-    },
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -100,7 +95,24 @@
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png",
-      "publisherName": "Future Dance School"
+      "publisherName": "Future Dance School",
+      "extraResources": [
+        {
+          "from": "node_modules/better-sqlite3",
+          "to": "better-sqlite3",
+          "filter": ["**/*"]
+        }
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Office"
     }
   }
 }

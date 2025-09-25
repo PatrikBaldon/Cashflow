@@ -11,6 +11,10 @@ on:
         required: true
         default: 'v2.0.0'
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   release:
     runs-on: ${{ matrix.os }}
@@ -42,6 +46,10 @@ jobs:
       run: npm ci
       continue-on-error: true
 
+    - name: Rebuild better-sqlite3 for Electron (Windows only)
+      if: matrix.platform == 'win'
+      run: npm run rebuild
+      continue-on-error: true
 
     - name: Install frontend dependencies
       run: cd frontend && npm ci
@@ -65,6 +73,9 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      packages: write
     
     steps:
     - name: Checkout code
