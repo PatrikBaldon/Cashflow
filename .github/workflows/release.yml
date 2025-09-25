@@ -42,7 +42,8 @@ jobs:
       run: npm ci
       continue-on-error: true
 
-    - name: Rebuild native modules for Electron
+    - name: Rebuild native modules for Electron (Windows only)
+      if: matrix.platform == 'win'
       run: npx electron-rebuild
       continue-on-error: true
 

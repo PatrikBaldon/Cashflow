@@ -22,7 +22,7 @@
     "lint": "npm run lint:frontend",
     "lint:frontend": "cd frontend && npm run lint",
     "clean": "rimraf dist frontend/dist",
-    "postinstall": "electron-builder install-app-deps && electron-rebuild",
+    "postinstall": "electron-builder install-app-deps",
     "setup:github": "./scripts/setup-github.sh",
     "release": "./scripts/create-release.sh"
   },
@@ -86,11 +86,6 @@
       "target": "dmg",
       "icon": "assets/icon.icns"
     },
-    "win": {
-      "target": "nsis",
-      "icon": "assets/icon.png",
-      "publisherName": "Future Dance School"
-    },
     "linux": {
       "target": "AppImage",
       "icon": "assets/icon.png",
@@ -103,7 +98,12 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Registro Contanti"
     },
-    "buildDependenciesFromSource": true,
-    "nodeGypRebuild": true
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png",
+      "publisherName": "Future Dance School",
+      "buildDependenciesFromSource": true,
+      "nodeGypRebuild": true
+    }
   }
 }
