@@ -42,6 +42,15 @@ jobs:
       run: npm ci
       continue-on-error: true
 
+    - name: Rebuild native modules for Electron
+      run: npx electron-rebuild
+      continue-on-error: true
+
+    - name: Install Windows build tools (Windows only)
+      if: matrix.platform == 'win'
+      run: npm install --global windows-build-tools
+      continue-on-error: true
+
     - name: Install frontend dependencies
       run: cd frontend && npm ci
 
