@@ -59,6 +59,7 @@
   "build": {
     "appId": "com.futuredanceschool.cashflow",
     "productName": "Registro Contanti",
+    "nodeGypRebuild": true,
     "directories": {
       "output": "dist"
     },
@@ -78,7 +79,6 @@
       "!node_modules/**/README.md",
       "!node_modules/**/CHANGELOG.md",
       "!node_modules/**/LICENSE*",
-      "!node_modules/**/package.json",
       "!node_modules/**/yarn.lock",
       "!node_modules/**/pnpm-lock.yaml"
     ],

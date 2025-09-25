@@ -44,11 +44,9 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
-      continue-on-error: true
 
     - name: Rebuild native dependencies for Electron
       run: npm run rebuild
-      continue-on-error: true
 
     - name: Install frontend dependencies
       run: cd frontend && npm ci
@@ -60,7 +58,6 @@ jobs:
       run: npm run build:${{ matrix.platform }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      continue-on-error: true
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
