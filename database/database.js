@@ -7,18 +7,28 @@ const CryptoJS = require('crypto-js');
 class DatabaseManager {
   constructor() {
     this.db = null;
-    this.dbPath = path.join(__dirname, 'registro_contanti.db');
+    // Usa il percorso dell'app per Electron compilato
+    const appPath = require('electron').app ? require('electron').app.getPath('userData') : __dirname;
+    this.dbPath = path.join(appPath, 'registro_contanti.db');
     this.encryptionKey = this.getOrCreateEncryptionKey();
   }
 
   // Inizializza il database
   async initialize() {
     try {
+      // Assicurati che la directory esista
+      const dbDir = path.dirname(this.dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+      
       this.db = new Database(this.dbPath);
-      console.log('Database connesso con successo');
+      console.log('Database connesso con successo:', this.dbPath);
       await this.createTables();
     } catch (err) {
       console.error('Errore apertura database:', err);
+      console.error('Percorso database:', this.dbPath);
+      console.error('Better-sqlite3 disponibile:', !!Database);
       throw err;
     }
   }
@@ -26,10 +36,22 @@ class DatabaseManager {
   // Crea le tabelle se non esistono
   async createTables() {
     try {
+      // Usa il percorso relativo per lo schema
       const schemaPath = path.join(__dirname, 'schema.sql');
-      const schema = fs.readFileSync(schemaPath, 'utf8');
-      
-      this.db.exec(schema);
+      if (!fs.existsSync(schemaPath)) {
+        // Fallback per Electron compilato
+        const appPath = require('electron').app ? require('electron').app.getAppPath() : __dirname;
+        const fallbackSchemaPath = path.join(appPath, 'database', 'schema.sql');
+        if (fs.existsSync(fallbackSchemaPath)) {
+          const schema = fs.readFileSync(fallbackSchemaPath, 'utf8');
+          this.db.exec(schema);
+        } else {
+          throw new Error('Schema SQL non trovato');
+        }
+      } else {
+        const schema = fs.readFileSync(schemaPath, 'utf8');
+        this.db.exec(schema);
+      }
       console.log('Tabelle create/verificate con successo');
     } catch (err) {
       console.error('Errore creazione tabelle:', err);
@@ -39,11 +61,17 @@ class DatabaseManager {
 
   // Gestisce la chiave di crittografia
   getOrCreateEncryptionKey() {
-    const keyPath = path.join(__dirname, '.encryption_key');
+    const appPath = require('electron').app ? require('electron').app.getPath('userData') : __dirname;
+    const keyPath = path.join(appPath, '.encryption_key');
     if (fs.existsSync(keyPath)) {
       return fs.readFileSync(keyPath, 'utf8');
     } else {
       const key = CryptoJS.lib.WordArray.random(256/8).toString();
+      // Assicurati che la directory esista
+      const keyDir = path.dirname(keyPath);
+      if (!fs.existsSync(keyDir)) {
+        fs.mkdirSync(keyDir, { recursive: true });
+      }
       fs.writeFileSync(keyPath, key);
       return key;
     }
