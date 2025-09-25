@@ -95,14 +95,7 @@
     "win": {
       "target": "nsis",
       "icon": "assets/icon.png",
-      "publisherName": "Future Dance School",
-      "extraResources": [
-        {
-          "from": "node_modules/better-sqlite3",
-          "to": "better-sqlite3",
-          "filter": ["**/*"]
-        }
-      ]
+      "publisherName": "Future Dance School"
     },
     "mac": {
       "category": "public.app-category.business",
