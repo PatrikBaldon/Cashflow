@@ -98,22 +98,21 @@ jobs:
           3. Segui le istruzioni di installazione
           4. L'applicazione sarà disponibile nel menu Start/Applicazioni
           
-          ### ✨ Novità in questa versione
-          - Miglioramenti alle performance
-          - Correzioni di bug
-          - Nuove funzionalità
+          ### ✨ Caratteristiche principali
+          - 💳 Gestione pagamenti completa
+          - 👥 Sistema utenti multi-ruolo
+          - 📊 Dashboard con statistiche
+          - 📤 Export Excel
+          - 🔒 Database SQLite sicuro
+          - 🖥️ Multi-piattaforma
           
           ### 📋 Note
           - L'applicazione include un database SQLite integrato
           - I dati vengono salvati localmente sul computer
           - Non è richiesta connessione internet per l'uso
-          - Backup automatici dei dati
           
           ### 🔧 Supporto
-          Per problemi o domande:
-          - 📧 Email: support@futuredanceschool.com
-          - 🐛 Issues: [GitHub Issues](https://github.com/PatrikBaldon/Cashflow/issues)
-          - 📖 Docs: [Documentazione](https://github.com/PatrikBaldon/Cashflow/tree/main/docs)
+          Per miglioramenti o suggerimenti, apri una issue su GitHub.
         files: |
           artifacts/win-build/*
           artifacts/mac-build/*
