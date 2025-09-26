@@ -89,6 +89,7 @@ class DatabaseManager {
   }
 
   // Crea un nuovo utente
+  /* METODI OBSOLETI PER LA TABELLA 'users' - NON UTILIZZATI
   async createUser(username, password, role = 'user') {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -104,6 +105,7 @@ class DatabaseManager {
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Verifica le credenziali utente
   async verifyUser(username, password) {
@@ -199,6 +201,7 @@ class DatabaseManager {
   }
 
   // Crea un nuovo pagamento
+  /* METODO DUPLICATO - NON UTILIZZATO
   async createPayment(payment) {
     try {
       const stmt = this.db.prepare(`
@@ -221,13 +224,14 @@ class DatabaseManager {
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Ottiene i pagamenti con filtri
+  /* METODO DUPLICATO - NON UTILIZZATO
   async getPayments(filters = {}) {
     try {
       let query = 'SELECT * FROM payments WHERE 1=1';
       const params = [];
-
       if (filters.userId) {
         query += ' AND user_id = ?';
         params.push(filters.userId);
@@ -244,30 +248,27 @@ class DatabaseManager {
         query += ' AND type = ?';
         params.push(filters.type);
       }
-
       query += ' ORDER BY date DESC, created_at DESC';
-
       const stmt = this.db.prepare(query);
       const payments = stmt.all(...params);
-
       // Calcola totale
       const total = payments.reduce((sum, payment) => {
         return payment.type === 'income' ? sum + payment.amount : sum - payment.amount;
       }, 0);
-
       return { success: true, payments, total };
     } catch (err) {
       console.error('Errore recupero pagamenti:', err);
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Aggiorna un pagamento
+  /* METODO DUPLICATO - NON UTILIZZATO
   async updatePayment(paymentId, updates) {
     try {
       const fields = [];
       const values = [];
-
       if (updates.amount !== undefined) {
         fields.push('amount = ?');
         values.push(updates.amount);
@@ -288,23 +289,22 @@ class DatabaseManager {
         fields.push('date = ?');
         values.push(updates.date);
       }
-
       if (fields.length === 0) {
         return { success: false, error: 'Nessun campo da aggiornare' };
       }
-
       values.push(paymentId);
       const stmt = this.db.prepare(`UPDATE payments SET ${fields.join(', ')} WHERE id = ?`);
       stmt.run(...values);
-
       return { success: true };
     } catch (err) {
       console.error('Errore aggiornamento pagamento:', err);
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Elimina un pagamento
+  /* METODO DUPLICATO - NON UTILIZZATO
   async deletePayment(paymentId) {
     try {
       const stmt = this.db.prepare('DELETE FROM payments WHERE id = ?');
@@ -315,13 +315,14 @@ class DatabaseManager {
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Ottiene statistiche
+  /* METODO DUPLICATO - NON UTILIZZATO
   async getStatistics(filters = {}) {
     try {
       let query = 'SELECT type, SUM(amount) as total FROM payments WHERE 1=1';
       const params = [];
-
       if (filters.userId) {
         query += ' AND user_id = ?';
         params.push(filters.userId);
@@ -334,18 +335,14 @@ class DatabaseManager {
         query += ' AND date <= ?';
         params.push(filters.endDate);
       }
-
       query += ' GROUP BY type';
-
       const stmt = this.db.prepare(query);
       const results = stmt.all(...params);
-
       const stats = {
         totalIncome: 0,
         totalExpenses: 0,
         netCashFlow: 0
       };
-
       results.forEach(row => {
         if (row.type === 'income') {
           stats.totalIncome = row.total;
@@ -353,15 +350,14 @@ class DatabaseManager {
           stats.totalExpenses = row.total;
         }
       });
-
       stats.netCashFlow = stats.totalIncome - stats.totalExpenses;
-
       return { success: true, statistics: stats };
     } catch (err) {
       console.error('Errore recupero statistiche:', err);
       return { success: false, error: err.message };
     }
   }
+  */
 
   // Crea backup del database
   async createBackup() {
@@ -896,11 +892,18 @@ class DatabaseManager {
   // Aggiorna un'impostazione
   async updateSetting(key, value) {
     try {
+      let finalValue = value;
+      // Se stiamo aggiornando la password delle casse nascoste, eseguiamo l'hashing
+      if (key === 'hidden_cash_password') {
+        finalValue = await bcrypt.hash(value, 10);
+      }
+
       const stmt = this.db.prepare(`
         INSERT OR REPLACE INTO settings (key, value, updated_at)
         VALUES (?, ?, datetime('now'))
       `);
-      stmt.run(key, value);
+      
+      stmt.run(key, finalValue);
       return { success: true };
     } catch (err) {
       console.error('Errore aggiornamento impostazione:', err);
@@ -935,7 +938,7 @@ class DatabaseManager {
       
       const result = stmt.run(companyName, vatNumber, email, securityCode);
       
-      // Salva la password delle casse nascoste
+      // Salva la password delle casse nascoste (verrà hashata dal metodo updateSetting)
       await this.updateSetting('hidden_cash_password', hiddenCashPassword);
       
       // Marca il setup come completato

@@ -4,28 +4,31 @@ const path = require('path')
 const fs = require('fs').promises
 
 class ExcelService {
-  constructor(authManager = null) {
+  constructor(dbManager, authManager = null) {
+    this.db = dbManager;
     this.authManager = authManager;
     this.setupIpcHandlers()
   }
 
-  setAuthManager(authManager) {
-    this.authManager = authManager;
-  }
+  // Rimuoviamo setAuthManager, ora viene passato nel costruttore
+  // setAuthManager(authManager) {
+  //   this.authManager = authManager;
+  // }
 
   setupIpcHandlers() {
     // Export pagamenti per cassa
     ipcMain.handle('excel-export-payments', async (event, { cashRegisterId, includeHidden = false, filePath = null }) => {
       try {
-        const Database = require('../database/database')
-        const db = new Database()
-        await db.initialize()
+        // Rimuoviamo l'istanza locale del DB
+        // const Database = require('../database/database')
+        // const db = new Database()
+        // await db.initialize()
         
         // Carica i pagamenti per la cassa specifica
-        const payments = await db.getPaymentsByCashRegister(cashRegisterId)
+        const payments = await this.db.getPaymentsByCashRegister(cashRegisterId)
         
         // Carica le informazioni della cassa
-        const cashRegister = await db.getCashRegisterById(cashRegisterId)
+        const cashRegister = await this.db.getCashRegisterById(cashRegisterId)
         
         if (!payments || payments.length === 0) {
           return { success: false, message: 'Nessun pagamento trovato per questa cassa' }
@@ -104,12 +107,13 @@ class ExcelService {
           return { success: false, message: 'Utente non autenticato' };
         }
 
-        const Database = require('../database/database')
-        const db = new Database()
-        await db.initialize()
+        // Rimuoviamo l'istanza locale del DB
+        // const Database = require('../database/database')
+        // const db = new Database()
+        // await db.initialize()
         
         // Carica tutte le casse per l'azienda corrente
-        const cashRegisters = await db.getCashRegisters(currentUser.companyId, includeHidden)
+        const cashRegisters = await this.db.getCashRegisters(currentUser.companyId, includeHidden)
         
         if (!cashRegisters || cashRegisters.length === 0) {
           return { success: false, message: 'Nessuna cassa trovata' }
@@ -120,7 +124,7 @@ class ExcelService {
 
         for (const cashRegister of cashRegisters) {
           // Carica i pagamenti per questa cassa
-          const payments = await db.getPaymentsByCashRegister(cashRegister.id)
+          const payments = await this.db.getPaymentsByCashRegister(cashRegister.id)
           
           if (payments && payments.length > 0) {
             // Prepara i dati per Excel

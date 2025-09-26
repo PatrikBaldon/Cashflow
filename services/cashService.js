@@ -1,20 +1,23 @@
 const { ipcMain } = require('electron');
-const DatabaseManager = require('../database/database');
+// Rimuoviamo l'import, non serve più
+// const DatabaseManager = require('../database/database');
 
 class CashService {
-  constructor(authManager = null) {
-    this.db = new DatabaseManager();
+  constructor(dbManager, authManager = null) {
+    this.db = dbManager;
     this.authManager = authManager;
     this.setupIpcHandlers();
   }
 
-  async initialize() {
-    await this.db.initialize();
-  }
+  // Rimuoviamo il metodo initialize(), ora è gestito in main.js
+  // async initialize() {
+  //   await this.db.initialize();
+  // }
 
-  setAuthManager(authManager) {
-    this.authManager = authManager;
-  }
+  // Rimuoviamo setAuthManager, ora viene passato nel costruttore
+  // setAuthManager(authManager) {
+  //   this.authManager = authManager;
+  // }
 
   setupIpcHandlers() {
     // Gestione casse
@@ -293,9 +296,10 @@ class CashService {
     }
   }
 
-  close() {
-    this.db.close();
-  }
+  // Rimuoviamo il metodo close(), ora è gestito in main.js
+  // close() {
+  //   this.db.close();
+  // }
 }
 
 module.exports = CashService;

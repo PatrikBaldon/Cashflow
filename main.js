@@ -3,6 +3,7 @@ const path = require('path');
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 
 // Import services
+const DatabaseManager = require('./database/database');
 const AuthManager = require('./auth/auth');
 const CashService = require('./services/cashService');
 const UserService = require('./services/userService');
@@ -10,6 +11,7 @@ const ExcelService = require('./services/excelService');
 const SetupService = require('./services/setupService');
 
 let mainWindow;
+let dbManager; // <-- Aggiungo l'istanza del DB qui
 let authManager;
 let cashService;
 let userService;
@@ -88,19 +90,24 @@ function createWindow() {
 // App event handlers
 app.whenReady().then(async () => {
   // Initialize services
-  setupService = new SetupService();
-  authManager = new AuthManager();
-  cashService = new CashService(authManager);
-  userService = new UserService(authManager);
-  excelService = new ExcelService(authManager);
+  dbManager = new DatabaseManager();
+  await dbManager.initialize(); // Inizializzo il DB solo qui
+
+  setupService = new SetupService(dbManager);
+  authManager = new AuthManager(dbManager);
+  cashService = new CashService(dbManager, authManager);
+  userService = new UserService(dbManager, authManager);
+  excelService = new ExcelService(dbManager, authManager);
   
-  await setupService.initialize();
-  await authManager.initialize();
-  await cashService.initialize();
-  await userService.initialize();
+  // Rimuovo le inizializzazioni ridondanti dei servizi
+  // await setupService.initialize();
+  // await authManager.initialize();
+  // await cashService.initialize();
+  // await userService.initialize();
   
   // Assicurati che cashService abbia il riferimento all'authManager
-  cashService.setAuthManager(authManager);
+  // Questa riga è ridondante perché lo passiamo già nel costruttore
+  // cashService.setAuthManager(authManager); 
   
   // Setup IPC handlers
   setupIpcHandlers();
@@ -123,10 +130,13 @@ app.on('window-all-closed', () => {
 
 // Cleanup on app quit
 app.on('before-quit', () => {
-  if (setupService) setupService.close();
-  if (authManager) authManager.close();
-  if (cashService) cashService.close();
-  if (userService) userService.close();
+  // Chiudo la connessione al DB solo qui
+  if (dbManager) dbManager.close(); 
+  // Rimuovo le chiusure ridondanti
+  // if (setupService) setupService.close();
+  // if (authManager) authManager.close();
+  // if (cashService) cashService.close();
+  // if (userService) userService.close();
 });
 
 // Setup IPC handlers

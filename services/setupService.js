@@ -1,15 +1,17 @@
 const { ipcMain } = require('electron');
-const DatabaseManager = require('../database/database');
+// Rimuoviamo l'import, non serve più
+// const DatabaseManager = require('../database/database');
 
 class SetupService {
-  constructor() {
-    this.db = new DatabaseManager();
+  constructor(dbManager) {
+    this.db = dbManager;
     this.setupIpcHandlers();
   }
 
-  async initialize() {
-    await this.db.initialize();
-  }
+  // Rimuoviamo il metodo initialize(), ora è gestito in main.js
+  // async initialize() {
+  //   await this.db.initialize();
+  // }
 
   setupIpcHandlers() {
     // Verifica se il setup è completato
@@ -131,9 +133,10 @@ class SetupService {
     return emailRegex.test(email);
   }
 
-  close() {
-    this.db.close();
-  }
+  // Rimuoviamo il metodo close(), ora è gestito in main.js
+  // close() {
+  //   this.db.close();
+  // }
 }
 
 module.exports = SetupService;

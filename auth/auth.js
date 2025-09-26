@@ -1,16 +1,16 @@
 const { ipcMain } = require('electron');
-const DatabaseManager = require('../database/database');
 
 class AuthManager {
-  constructor() {
-    this.db = new DatabaseManager();
+  constructor(dbManager) {
+    this.db = dbManager;
     this.currentUser = null;
     this.hiddenCashPassword = null;
     this.setupIpcHandlers();
   }
 
   async initialize() {
-    await this.db.initialize();
+    // Rimuoviamo l'inizializzazione, ora è gestita in main.js
+    // await this.db.initialize(); 
     // Always lock hidden cash registers on app startup
     this.hiddenCashPassword = null;
   }
@@ -61,10 +61,17 @@ class AuthManager {
         // Leggi la password delle casse nascoste dal database
         const settings = await this.db.getSettings();
         const hiddenPasswordSetting = settings.find(s => s.key === 'hidden_cash_password');
-        const hiddenPassword = hiddenPasswordSetting ? hiddenPasswordSetting.value : 'admin123';
+        const hashedPassword = hiddenPasswordSetting ? hiddenPasswordSetting.value : null;
+
+        if (!hashedPassword) {
+          return { success: false, message: 'Password per casse nascoste non impostata.' };
+        }
         
-        if (password === hiddenPassword) {
-          this.hiddenCashPassword = password;
+        const bcrypt = require('bcryptjs');
+        const isPasswordValid = await bcrypt.compare(password, hashedPassword);
+        
+        if (isPasswordValid) {
+          this.hiddenCashPassword = password; // Salvo la password in chiaro solo in memoria per la sessione corrente
           console.log('AuthManager: Password correct, access granted');
           return { success: true };
         } else {
@@ -274,9 +281,10 @@ class AuthManager {
     return !!this.hiddenCashPassword;
   }
 
-  close() {
-    this.db.close();
-  }
+  // Rimuoviamo il metodo close(), ora è gestito in main.js
+  // close() {
+  //   this.db.close();
+  // }
 }
 
 module.exports = AuthManager;
