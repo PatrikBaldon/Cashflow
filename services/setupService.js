@@ -74,7 +74,13 @@ class SetupService {
     // Verifica se ci sono operatori esistenti
     ipcMain.handle('setup-has-operators', async () => {
       try {
-        const operators = await this.db.getOperators();
+        // Ottieni il profilo aziendale per avere il companyId
+        const profile = await this.db.getCompanyProfile();
+        if (!profile) {
+          return { success: false, hasOperators: false };
+        }
+        
+        const operators = await this.db.getOperators(profile.id);
         console.log('Verifica operatori - trovati:', operators.length, 'operatori:', operators);
         return { success: true, hasOperators: operators.length > 0 };
       } catch (error) {
@@ -86,16 +92,16 @@ class SetupService {
     // Crea il primo amministratore
     ipcMain.handle('setup-create-first-admin', async (event, { name, password }) => {
       try {
-        // Verifica che non ci siano già operatori
-        const existingOperators = await this.db.getOperators();
-        if (existingOperators.length > 0) {
-          return { success: false, message: 'Amministratore già esistente' };
-        }
-
         // Ottieni il profilo aziendale
         const profile = await this.db.getCompanyProfile();
         if (!profile) {
           return { success: false, message: 'Profilo aziendale non trovato' };
+        }
+
+        // Verifica che non ci siano già operatori
+        const existingOperators = await this.db.getOperators(profile.id);
+        if (existingOperators.length > 0) {
+          return { success: false, message: 'Amministratore già esistente' };
         }
 
         // Crea il primo amministratore
