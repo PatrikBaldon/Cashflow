@@ -90,8 +90,8 @@ function App() {
           onSuccess={async () => {
             console.log('Admin created successfully, hiding create admin screen')
             setShowCreateAdmin(false)
-            // Ricarica la pagina per assicurarsi che tutto sia aggiornato
-            window.location.reload()
+            // Ricarica lo stato dell'app invece di ricaricare la pagina
+            await checkAuth()
           }}
           onBack={() => {
             console.log('Going back to setup')
