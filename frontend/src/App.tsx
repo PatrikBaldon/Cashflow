@@ -25,12 +25,17 @@ function App() {
         if (setupResult.isCompleted) {
           // Verifica se ci sono operatori (se no, mostra creazione admin)
           const operatorsResult = await window.electronAPI.setup.hasOperators()
+          console.log('Setup completed, operators result:', operatorsResult)
           if (operatorsResult.success && !operatorsResult.hasOperators) {
+            console.log('No operators found, showing create admin screen')
             setShowCreateAdmin(true)
           } else {
+            console.log('Operators found or error, proceeding to auth check')
             await checkAuth()
             // Non caricare le casse qui, verrà fatto dopo il login
           }
+        } else {
+          console.log('Setup not completed, showing setup screen')
         }
       } catch (error) {
         console.error('Errore inizializzazione app:', error)
@@ -80,6 +85,8 @@ function App() {
       </div>
     )
   }
+
+  console.log('Rendering App - setupCompleted:', setupCompleted, 'showCreateAdmin:', showCreateAdmin, 'isAuthenticated:', isAuthenticated)
 
   return (
     <div className="min-h-screen bg-gray-50">
