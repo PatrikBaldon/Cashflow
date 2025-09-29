@@ -4,7 +4,6 @@ import { Lock, User, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useCashStore } from '../stores/cashStore'
 import PasswordResetScreen from './PasswordResetScreen'
-import ChangeAdminPasswordModal from './ChangeAdminPasswordModal'
 import toast from 'react-hot-toast'
 
 interface LoginForm {
@@ -18,7 +17,6 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
-  const [showChangeAdminPassword, setShowChangeAdminPassword] = useState(false)
 
   const {
     register: registerLogin,
@@ -32,14 +30,8 @@ const LoginScreen: React.FC = () => {
     try {
       const result = await login(data)
       if (result.success) {
-        if (result.requiresPasswordChange) {
-          // Login riuscito ma richiede cambio password per admin predefinito
-          setShowChangeAdminPassword(true)
-        } else {
-          // Login normale riuscito
-          await loadCashRegisters(false) // Carica solo le casse pubbliche
-          resetLogin()
-        }
+        await loadCashRegisters(false) // Carica solo le casse pubbliche
+        resetLogin()
       } else {
         toast.error(result.message || 'Credenziali non valide')
       }
@@ -145,17 +137,6 @@ const LoginScreen: React.FC = () => {
           <p className="mt-1">Tutti i dati sono memorizzati localmente</p>
         </div>
       </div>
-      
-      {/* Change Admin Password Modal */}
-      {showChangeAdminPassword && (
-        <ChangeAdminPasswordModal
-          onSuccess={() => {
-            setShowChangeAdminPassword(false)
-            // Ricarica la pagina per rifare il login con le nuove credenziali
-            window.location.reload()
-          }}
-        />
-      )}
     </div>
   )
 }

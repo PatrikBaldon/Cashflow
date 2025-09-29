@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import LoginScreen from './components/LoginScreen'
 import MainScreen from './components/MainScreen'
 import SetupScreen from './components/SetupScreen'
+import CreateFirstAdminScreen from './components/CreateFirstAdminScreen'
 import { useAuthStore } from './stores/authStore'
 import { useCashStore } from './stores/cashStore'
 
@@ -12,6 +13,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [setupCompleted, setSetupCompleted] = useState(false)
   const [checkingSetup, setCheckingSetup] = useState(true)
+  const [showCreateAdmin, setShowCreateAdmin] = useState(false)
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -21,8 +23,14 @@ function App() {
         setSetupCompleted(setupResult.isCompleted ?? false)
         
         if (setupResult.isCompleted) {
-          await checkAuth()
-          // Non caricare le casse qui, verrà fatto dopo il login
+          // Verifica se ci sono operatori (se no, mostra creazione admin)
+          const operatorsResult = await window.electronAPI.users.get()
+          if (operatorsResult.success && operatorsResult.data && operatorsResult.data.length === 0) {
+            setShowCreateAdmin(true)
+          } else {
+            await checkAuth()
+            // Non caricare le casse qui, verrà fatto dopo il login
+          }
         }
       } catch (error) {
         console.error('Errore inizializzazione app:', error)
@@ -77,6 +85,17 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       {!setupCompleted ? (
         <SetupScreen />
+      ) : showCreateAdmin ? (
+        <CreateFirstAdminScreen 
+          onSuccess={() => {
+            setShowCreateAdmin(false)
+            checkAuth()
+          }}
+          onBack={() => {
+            setShowCreateAdmin(false)
+            setSetupCompleted(false)
+          }}
+        />
       ) : isAuthenticated ? (
         <MainScreen />
       ) : (

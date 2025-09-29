@@ -21,24 +21,6 @@ class AuthManager {
       try {
         const user = await this.db.authenticateOperator(name, password);
         if (user) {
-          // Controlla se è l'admin predefinito e se deve essere forzato il cambio password
-          if (name === 'admin' && password === 'admin123') {
-            const defaultAdminUsed = await this.db.getSetting('default_admin_used');
-            if (defaultAdminUsed === 'false') {
-              // Primo accesso con admin predefinito - permette login ma richiede cambio password
-              this.currentUser = user;
-              return { 
-                success: true, 
-                user: user,
-                requiresPasswordChange: true,
-                message: 'Cambio password richiesto per l\'admin predefinito'
-              };
-            } else {
-              // Admin predefinito già utilizzato - login negato
-              return { success: false, message: 'Account admin predefinito disabilitato. Contatta l\'amministratore.' };
-            }
-          }
-          
           this.currentUser = user;
           return { success: true, user };
         } else {
@@ -50,40 +32,6 @@ class AuthManager {
       }
     });
 
-    // Cambio password admin predefinito
-    ipcMain.handle('auth-change-default-admin', async (event, { newPassword, newName }) => {
-      try {
-        // Verifica che sia l'admin predefinito
-        const defaultAdminUsed = await this.db.getSetting('default_admin_used');
-        if (defaultAdminUsed !== 'false') {
-          return { success: false, message: 'Operazione non consentita' };
-        }
-
-        // Aggiorna l'admin predefinito con nuovi dati
-        const result = await this.db.updateOperator(1, { // ID 1 è sempre l'admin predefinito
-          name: newName,
-          password: newPassword
-        });
-
-        if (result.success) {
-          // Marca l'admin predefinito come utilizzato
-          await this.db.updateSetting('default_admin_used', 'true');
-          
-          // Aggiorna l'utente corrente
-          this.currentUser = {
-            ...this.currentUser,
-            name: newName
-          };
-          
-          return { success: true, message: 'Password cambiata con successo' };
-        } else {
-          return { success: false, message: result.error || 'Errore durante il cambio password' };
-        }
-      } catch (error) {
-        console.error('Errore cambio password admin:', error);
-        return { success: false, message: 'Errore durante il cambio password' };
-      }
-    });
 
     // Logout
     ipcMain.handle('auth-logout', async () => {

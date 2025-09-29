@@ -48,19 +48,6 @@ class SetupService {
           return { success: false, message: result.error };
         }
 
-        // Crea l'operatore admin di default
-        const adminResult = await this.db.createOperator(
-          result.companyId,
-          'admin',
-          'admin123',
-          true, // isAdmin
-          true  // canAccessHidden
-        );
-
-        if (!adminResult.success) {
-          return { success: false, message: 'Errore nella creazione dell\'amministratore' };
-        }
-
         // Crea la cassa principale
         const cashResult = await this.db.createCashRegister(
           result.companyId,
@@ -97,6 +84,41 @@ class SetupService {
       } catch (error) {
         console.error('Errore recupero profilo aziendale:', error);
         return { success: false, message: 'Errore durante il recupero del profilo aziendale' };
+      }
+    });
+
+    // Crea il primo amministratore
+    ipcMain.handle('setup-create-first-admin', async (event, { name, password }) => {
+      try {
+        // Verifica che non ci siano già operatori
+        const existingOperators = await this.db.getOperators();
+        if (existingOperators.length > 0) {
+          return { success: false, message: 'Amministratore già esistente' };
+        }
+
+        // Ottieni il profilo aziendale
+        const profile = await this.db.getCompanyProfile();
+        if (!profile) {
+          return { success: false, message: 'Profilo aziendale non trovato' };
+        }
+
+        // Crea il primo amministratore
+        const adminResult = await this.db.createOperator(
+          profile.id,
+          name,
+          password,
+          true, // isAdmin
+          true  // canAccessHidden
+        );
+
+        if (!adminResult.success) {
+          return { success: false, message: 'Errore nella creazione dell\'amministratore' };
+        }
+
+        return { success: true, message: 'Amministratore creato con successo' };
+      } catch (error) {
+        console.error('Errore creazione primo amministratore:', error);
+        return { success: false, message: 'Errore durante la creazione dell\'amministratore' };
       }
     });
   }
