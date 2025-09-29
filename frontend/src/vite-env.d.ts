@@ -6,7 +6,7 @@ declare global {
       
       // Authentication
       auth: {
-        login: (credentials: { name: string; password: string }) => Promise<{ success: boolean; user?: any; message?: string }>;
+        login: (credentials: { name: string; password: string }) => Promise<{ success: boolean; user?: any; message?: string; requiresPasswordChange?: boolean }>;
         logout: () => Promise<{ success: boolean }>;
         getCurrentUser: () => Promise<any>;
         unlockHiddenCash: (password: string) => Promise<{ success: boolean; message?: string }>;
@@ -15,6 +15,7 @@ declare global {
         requestPasswordReset: (data: { vatNumber?: string; email?: string; securityCode: string; operatorName: string }) => Promise<{ success: boolean; message?: string; token?: string; expiresAt?: string; companyName?: string }>;
         verifyResetToken: (data: { token: string }) => Promise<{ success: boolean; message?: string; operatorName?: string; expiresAt?: string }>;
         resetPassword: (data: { token: string; newPassword: string }) => Promise<{ success: boolean; message?: string }>;
+        changeDefaultAdmin: (data: { newName: string; newPassword: string }) => Promise<{ success: boolean; message?: string }>;
         updateHiddenCashPassword: (data: { newPassword: string }) => Promise<{ success: boolean; message?: string }>;
         requestHiddenPasswordReset: (data: { vatNumber?: string; email?: string; securityCode: string; currentPassword: string }) => Promise<{ success: boolean; message?: string; token?: string; expiresAt?: string; companyName?: string }>;
         resetHiddenPassword: (data: { token: string; newPassword: string }) => Promise<{ success: boolean; message?: string }>;
