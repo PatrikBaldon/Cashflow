@@ -92,7 +92,7 @@ class DatabaseManager {
   /* METODI OBSOLETI PER LA TABELLA 'users' - NON UTILIZZATI
   async createUser(username, password, role = 'user') {
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = bcrypt.hashSync(password, 10);
       const stmt = this.db.prepare(`
         INSERT INTO users (username, password, role, created_at)
         VALUES (?, ?, ?, datetime('now'))
@@ -164,7 +164,7 @@ class DatabaseManager {
         values.push(updates.username);
       }
       if (updates.password) {
-        const hashedPassword = await bcrypt.hash(updates.password, 10);
+        const hashedPassword = bcrypt.hashSync(updates.password, 10);
         fields.push('password = ?');
         values.push(hashedPassword);
       }
@@ -455,7 +455,7 @@ class DatabaseManager {
   // Crea un nuovo operatore
   async createOperator(companyId, name, password, isAdmin = false, canAccessHidden = false) {
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = bcrypt.hashSync(password, 10);
       const stmt = this.db.prepare(`
         INSERT INTO operators (company_id, name, password_hash, is_admin, can_access_hidden, created_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
@@ -480,7 +480,7 @@ class DatabaseManager {
         values.push(updates.name);
       }
       if (updates.password) {
-        const hashedPassword = await bcrypt.hash(updates.password, 10);
+        const hashedPassword = bcrypt.hashSync(updates.password, 10);
         fields.push('password_hash = ?');
         values.push(hashedPassword);
       }
@@ -895,7 +895,7 @@ class DatabaseManager {
       let finalValue = value;
       // Se stiamo aggiornando la password delle casse nascoste, eseguiamo l'hashing
       if (key === 'hidden_cash_password') {
-        finalValue = await bcrypt.hash(value, 10);
+        finalValue = bcrypt.hashSync(value, 10);
       }
 
       const stmt = this.db.prepare(`
@@ -1115,7 +1115,7 @@ class DatabaseManager {
       }
 
       // Hash della nuova password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = bcrypt.hashSync(newPassword, 10);
 
       // Aggiorna la password dell'operatore
       const updateStmt = this.db.prepare('UPDATE operators SET password_hash = ? WHERE id = ?');
