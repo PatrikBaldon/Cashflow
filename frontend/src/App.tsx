@@ -22,9 +22,7 @@ function App() {
         
         if (setupResult.isCompleted) {
           await checkAuth()
-          if (isAuthenticated) {
-            await loadCashRegisters() // Carica solo le casse pubbliche
-          }
+          // Non caricare le casse qui, verrà fatto dopo il login
         }
       } catch (error) {
         console.error('Errore inizializzazione app:', error)

@@ -29,7 +29,7 @@ const LoginScreen: React.FC = () => {
     try {
       const success = await login(data)
       if (success) {
-        await loadCashRegisters() // Carica solo le casse pubbliche
+        await loadCashRegisters(false) // Carica solo le casse pubbliche
         resetLogin()
       }
     } finally {
