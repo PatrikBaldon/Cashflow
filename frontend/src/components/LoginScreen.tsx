@@ -32,11 +32,14 @@ const LoginScreen: React.FC = () => {
     try {
       const result = await login(data)
       if (result.success) {
-        await loadCashRegisters(false) // Carica solo le casse pubbliche
-        resetLogin()
-      } else if (result.requiresPasswordChange) {
-        // Mostra il modal per il cambio password dell'admin predefinito
-        setShowChangeAdminPassword(true)
+        if (result.requiresPasswordChange) {
+          // Login riuscito ma richiede cambio password per admin predefinito
+          setShowChangeAdminPassword(true)
+        } else {
+          // Login normale riuscito
+          await loadCashRegisters(false) // Carica solo le casse pubbliche
+          resetLogin()
+        }
       } else {
         toast.error(result.message || 'Credenziali non valide')
       }

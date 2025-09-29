@@ -25,12 +25,13 @@ class AuthManager {
           if (name === 'admin' && password === 'admin123') {
             const defaultAdminUsed = await this.db.getSetting('default_admin_used');
             if (defaultAdminUsed === 'false') {
-              // Primo accesso con admin predefinito - forza cambio password
+              // Primo accesso con admin predefinito - permette login ma richiede cambio password
+              this.currentUser = user;
               return { 
-                success: false, 
-                message: 'Cambio password richiesto',
+                success: true, 
+                user: user,
                 requiresPasswordChange: true,
-                user: user
+                message: 'Cambio password richiesto per l\'admin predefinito'
               };
             } else {
               // Admin predefinito già utilizzato - login negato
