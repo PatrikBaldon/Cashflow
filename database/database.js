@@ -896,6 +896,18 @@ class DatabaseManager {
     }
   }
 
+  // Ottiene una singola impostazione
+  async getSetting(key) {
+    try {
+      const stmt = this.db.prepare('SELECT value FROM settings WHERE key = ?');
+      const result = stmt.get(key);
+      return result ? result.value : null;
+    } catch (err) {
+      console.error('Errore recupero impostazione:', err);
+      throw err;
+    }
+  }
+
   // Aggiorna un'impostazione
   async updateSetting(key, value) {
     try {
