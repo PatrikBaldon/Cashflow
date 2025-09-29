@@ -67,6 +67,7 @@ declare global {
         isCompleted: () => Promise<{ success: boolean; isCompleted?: boolean; message?: string }>;
         createCompany: (data: { companyName: string; vatNumber: string; email: string; hiddenCashPassword: string }) => Promise<{ success: boolean; message?: string; securityCode?: string; companyId?: number }>;
         getCompanyProfile: () => Promise<{ success: boolean; profile?: any; message?: string }>;
+        hasOperators: () => Promise<{ success: boolean; hasOperators?: boolean }>;
         createFirstAdmin: (data: { name: string; password: string }) => Promise<{ success: boolean; message?: string }>;
       };
       

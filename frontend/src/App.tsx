@@ -24,8 +24,8 @@ function App() {
         
         if (setupResult.isCompleted) {
           // Verifica se ci sono operatori (se no, mostra creazione admin)
-          const operatorsResult = await window.electronAPI.users.get()
-          if (operatorsResult.success && operatorsResult.data && operatorsResult.data.length === 0) {
+          const operatorsResult = await window.electronAPI.setup.hasOperators()
+          if (operatorsResult.success && !operatorsResult.hasOperators) {
             setShowCreateAdmin(true)
           } else {
             await checkAuth()

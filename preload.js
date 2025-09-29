@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isCompleted: () => ipcRenderer.invoke('setup-is-completed'),
     createCompany: (data) => ipcRenderer.invoke('setup-create-company', data),
     getCompanyProfile: () => ipcRenderer.invoke('setup-get-company-profile'),
+    hasOperators: () => ipcRenderer.invoke('setup-has-operators'),
     createFirstAdmin: (data) => ipcRenderer.invoke('setup-create-first-admin', data),
   },
   

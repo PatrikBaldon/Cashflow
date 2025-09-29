@@ -71,6 +71,17 @@ class SetupService {
       }
     });
 
+    // Verifica se ci sono operatori esistenti
+    ipcMain.handle('setup-has-operators', async () => {
+      try {
+        const operators = await this.db.getOperators();
+        return { success: true, hasOperators: operators.length > 0 };
+      } catch (error) {
+        console.error('Errore verifica operatori:', error);
+        return { success: false, hasOperators: false };
+      }
+    });
+
     // Crea il primo amministratore
     ipcMain.handle('setup-create-first-admin', async (event, { name, password }) => {
       try {
