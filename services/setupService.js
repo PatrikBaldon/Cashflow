@@ -48,19 +48,6 @@ class SetupService {
           return { success: false, message: result.error };
         }
 
-        // Crea la cassa principale (senza operatore specifico per ora)
-        const cashResult = await this.db.createCashRegister(
-          result.companyId,
-          'Cassa Principale',
-          false, // isHidden
-          'Cassa principale per i pagamenti regolari',
-          1 // ID temporaneo, sarà aggiornato quando viene creato il primo admin
-        );
-
-        if (!cashResult.success) {
-          return { success: false, message: 'Errore nella creazione della cassa principale' };
-        }
-
         return { 
           success: true, 
           message: 'Profilo aziendale creato con successo',
@@ -112,7 +99,20 @@ class SetupService {
           return { success: false, message: 'Errore nella creazione dell\'amministratore' };
         }
 
-        return { success: true, message: 'Amministratore creato con successo' };
+        // Crea la cassa principale con il primo amministratore
+        const cashResult = await this.db.createCashRegister(
+          profile.id,
+          'Cassa Principale',
+          false, // isHidden
+          'Cassa principale per i pagamenti regolari',
+          adminResult.operatorId
+        );
+
+        if (!cashResult.success) {
+          return { success: false, message: 'Errore nella creazione della cassa principale' };
+        }
+
+        return { success: true, message: 'Amministratore e cassa principale creati con successo' };
       } catch (error) {
         console.error('Errore creazione primo amministratore:', error);
         return { success: false, message: 'Errore durante la creazione dell\'amministratore' };
