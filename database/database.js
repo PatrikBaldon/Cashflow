@@ -461,7 +461,11 @@ class DatabaseManager {
         VALUES (?, ?, ?, ?, ?, datetime('now'))
       `);
       
-      const result = stmt.run(companyId, name, hashedPassword, isAdmin, canAccessHidden);
+      // Converti i valori booleani in numeri per SQLite
+      const isAdminInt = isAdmin ? 1 : 0;
+      const canAccessHiddenInt = canAccessHidden ? 1 : 0;
+      
+      const result = stmt.run(companyId, name, hashedPassword, isAdminInt, canAccessHiddenInt);
       return { success: true, operatorId: result.lastInsertRowid };
     } catch (err) {
       console.error('Errore creazione operatore:', err);
@@ -486,11 +490,11 @@ class DatabaseManager {
       }
       if (updates.isAdmin !== undefined) {
         fields.push('is_admin = ?');
-        values.push(updates.isAdmin);
+        values.push(updates.isAdmin ? 1 : 0);
       }
       if (updates.canAccessHidden !== undefined) {
         fields.push('can_access_hidden = ?');
-        values.push(updates.canAccessHidden);
+        values.push(updates.canAccessHidden ? 1 : 0);
       }
 
       if (fields.length === 0) {
@@ -563,7 +567,10 @@ class DatabaseManager {
         VALUES (?, ?, ?, ?, ?, datetime('now'))
       `);
       
-      const result = stmt.run(companyId, name, isHidden, description, createdBy);
+      // Converti il valore booleano in numero per SQLite
+      const isHiddenInt = isHidden ? 1 : 0;
+      
+      const result = stmt.run(companyId, name, isHiddenInt, description, createdBy);
       return { success: true, registerId: result.lastInsertRowid };
     } catch (err) {
       console.error('Errore creazione cassa:', err);
@@ -583,7 +590,7 @@ class DatabaseManager {
       }
       if (updates.isHidden !== undefined) {
         fields.push('is_hidden = ?');
-        values.push(updates.isHidden);
+        values.push(updates.isHidden ? 1 : 0);
       }
       if (updates.description !== undefined) {
         fields.push('description = ?');
