@@ -11,7 +11,7 @@ interface AuthState {
   user: User | null
   isAuthenticated: boolean
   hasHiddenAccess: boolean
-  login: (credentials: { name: string; password: string }) => Promise<boolean>
+  login: (credentials: { name: string; password: string }) => Promise<{ success: boolean; user?: any; message?: string; requiresPasswordChange?: boolean }>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   unlockHiddenCash: (password: string) => Promise<boolean>
