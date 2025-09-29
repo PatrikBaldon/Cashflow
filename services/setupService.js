@@ -75,6 +75,7 @@ class SetupService {
     ipcMain.handle('setup-has-operators', async () => {
       try {
         const operators = await this.db.getOperators();
+        console.log('Verifica operatori - trovati:', operators.length, 'operatori:', operators);
         return { success: true, hasOperators: operators.length > 0 };
       } catch (error) {
         console.error('Errore verifica operatori:', error);
@@ -105,6 +106,8 @@ class SetupService {
           true, // isAdmin
           true  // canAccessHidden
         );
+
+        console.log('Risultato creazione admin:', adminResult);
 
         if (!adminResult.success) {
           return { success: false, message: 'Errore nella creazione dell\'amministratore' };
