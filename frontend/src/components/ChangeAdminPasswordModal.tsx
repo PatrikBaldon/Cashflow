@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Shield, AlertCircle, CheckCircle } from 'lucide-react'
+import { Shield, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ChangeAdminForm {

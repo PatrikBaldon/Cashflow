@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useCashStore } from '../stores/cashStore'
 import PasswordResetScreen from './PasswordResetScreen'
 import ChangeAdminPasswordModal from './ChangeAdminPasswordModal'
+import toast from 'react-hot-toast'
 
 interface LoginForm {
   name: string
@@ -18,7 +19,6 @@ const LoginScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [showChangeAdminPassword, setShowChangeAdminPassword] = useState(false)
-  const [pendingAdminUser, setPendingAdminUser] = useState(null)
 
   const {
     register: registerLogin,
@@ -36,7 +36,6 @@ const LoginScreen: React.FC = () => {
         resetLogin()
       } else if (result.requiresPasswordChange) {
         // Mostra il modal per il cambio password dell'admin predefinito
-        setPendingAdminUser(result.user)
         setShowChangeAdminPassword(true)
       } else {
         toast.error(result.message || 'Credenziali non valide')
@@ -149,7 +148,6 @@ const LoginScreen: React.FC = () => {
         <ChangeAdminPasswordModal
           onSuccess={() => {
             setShowChangeAdminPassword(false)
-            setPendingAdminUser(null)
             // Ricarica la pagina per rifare il login con le nuove credenziali
             window.location.reload()
           }}
