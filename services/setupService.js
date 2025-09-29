@@ -48,21 +48,18 @@ class SetupService {
           return { success: false, message: result.error };
         }
 
-        // Crea la cassa principale
+        // Crea la cassa principale (senza operatore specifico per ora)
         const cashResult = await this.db.createCashRegister(
           result.companyId,
           'Cassa Principale',
           false, // isHidden
           'Cassa principale per i pagamenti regolari',
-          adminResult.operatorId
+          1 // ID temporaneo, sarà aggiornato quando viene creato il primo admin
         );
 
         if (!cashResult.success) {
           return { success: false, message: 'Errore nella creazione della cassa principale' };
         }
-
-        // Marca che l'admin predefinito non è ancora stato utilizzato
-        await this.db.updateSetting('default_admin_used', 'false');
 
         return { 
           success: true, 
