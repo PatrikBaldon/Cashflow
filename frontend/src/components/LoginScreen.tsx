@@ -4,6 +4,7 @@ import { Lock, User, Eye, EyeOff, Shield } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useCashStore } from '../stores/cashStore'
 import PasswordResetScreen from './PasswordResetScreen'
+import ChangeAdminPasswordModal from './ChangeAdminPasswordModal'
 
 interface LoginForm {
   name: string
@@ -16,6 +17,8 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [showChangeAdminPassword, setShowChangeAdminPassword] = useState(false)
+  const [pendingAdminUser, setPendingAdminUser] = useState(null)
 
   const {
     register: registerLogin,
@@ -27,10 +30,16 @@ const LoginScreen: React.FC = () => {
   const onLoginSubmit = async (data: LoginForm) => {
     setIsLoading(true)
     try {
-      const success = await login(data)
-      if (success) {
+      const result = await login(data)
+      if (result.success) {
         await loadCashRegisters(false) // Carica solo le casse pubbliche
         resetLogin()
+      } else if (result.requiresPasswordChange) {
+        // Mostra il modal per il cambio password dell'admin predefinito
+        setPendingAdminUser(result.user)
+        setShowChangeAdminPassword(true)
+      } else {
+        toast.error(result.message || 'Credenziali non valide')
       }
     } finally {
       setIsLoading(false)
@@ -134,6 +143,18 @@ const LoginScreen: React.FC = () => {
           <p className="mt-1">Tutti i dati sono memorizzati localmente</p>
         </div>
       </div>
+      
+      {/* Change Admin Password Modal */}
+      {showChangeAdminPassword && (
+        <ChangeAdminPasswordModal
+          onSuccess={() => {
+            setShowChangeAdminPassword(false)
+            setPendingAdminUser(null)
+            // Ricarica la pagina per rifare il login con le nuove credenziali
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

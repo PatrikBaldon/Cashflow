@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     requestPasswordReset: (data) => ipcRenderer.invoke('auth-request-password-reset', data),
     verifyResetToken: (data) => ipcRenderer.invoke('auth-verify-reset-token', data),
     resetPassword: (data) => ipcRenderer.invoke('auth-reset-password', data),
+    changeDefaultAdmin: (data) => ipcRenderer.invoke('auth-change-default-admin', data),
         updateHiddenCashPassword: (data) => ipcRenderer.invoke('auth-update-hidden-cash-password', data),
         requestHiddenPasswordReset: (data) => ipcRenderer.invoke('auth-request-hidden-password-reset', data),
         resetHiddenPassword: (data) => ipcRenderer.invoke('auth-reset-hidden-password', data),

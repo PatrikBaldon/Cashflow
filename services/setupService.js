@@ -74,6 +74,9 @@ class SetupService {
           return { success: false, message: 'Errore nella creazione della cassa principale' };
         }
 
+        // Marca che l'admin predefinito non è ancora stato utilizzato
+        await this.db.updateSetting('default_admin_used', 'false');
+
         return { 
           success: true, 
           message: 'Profilo aziendale creato con successo',

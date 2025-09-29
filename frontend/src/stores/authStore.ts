@@ -34,15 +34,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isAuthenticated: true 
         })
         toast.success(`Benvenuto, ${result.user.name}!`)
-        return true
+        return result
       } else {
-        toast.error(result.message || 'Credenziali non valide')
-        return false
+        // Non mostrare toast qui, sarà gestito dal componente
+        return result
       }
     } catch (error) {
       console.error('Errore login:', error)
-      toast.error('Errore durante il login')
-      return false
+      return { success: false, message: 'Errore durante il login' }
     }
   },
 
